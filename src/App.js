@@ -1,24 +1,21 @@
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Hub from "./pages/hub";
+import AddProducto from "./components/Producto/AddProducto";
+import AddProveedor from "./components/Proveedor/AddProveedor";
+import AddProductoProveedor from "./components/Producto/AddProductoProveedor";
+import VerProductoProveedor from "./components/Producto/VerProductoProveedor";
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Hub />} />
+        <Route path="/add-producto" element={<AddProducto />} />
+        <Route path="/add-proveedor" element={<AddProveedor />} />
+        <Route path="/add-producto-proveedor" element={<AddProductoProveedor />} />
+        <Route path="/ver-producto-proveedor" element={<VerProductoProveedor />} />
+      </Routes>
+    </Router>
   );
 }
 
