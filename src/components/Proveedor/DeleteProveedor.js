@@ -1,31 +1,55 @@
-// src/components/Proveedor/DeleteProveedor.js
-import { useState } from "react";
-import { doc, deleteDoc } from "firebase/firestore";
-import db from "../../firebase";
+import { useEffect, useState } from "react";
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import db from "../../firebase/config";
 
 export default function DeleteProveedor() {
-  const [nombre, setNombre] = useState("");
+  const [proveedores, setProveedores] = useState([]);
+  const [selectedId, setSelectedId] = useState("");
 
-  const handleDelete = async (e) => {
-    e.preventDefault();
-    const ref = doc(db, "proveedor", nombre)
+  useEffect(() => {
+    const fetch = async () => {
+      const snap = await getDocs(collection(db, "Proveedor"));
+      const lista = snap.docs.map(d => ({
+        id: d.id,
+        nombre: d.data().nombreProveedor,
+      }));
+      setProveedores(lista);
+    };
+    fetch();
+  }, []);
 
-    await deleteDoc(ref);
+  const handleDelete = async () => {
+    const confirm = window.confirm("¿Estás seguro de eliminar este proveedor?");
+    if (!confirm || !selectedId) return;
 
+    await deleteDoc(doc(db, "Proveedor", selectedId));
+    setProveedores(prev => prev.filter(p => p.id !== selectedId));
+    setSelectedId("");
     alert("Proveedor eliminado");
-    setNombre("");
   };
 
   return (
-    <form onSubmit={handleDelete} className="container my-3">
+    <div className="container my-4">
       <h4>Eliminar Proveedor</h4>
-      <input
-        className="form-control mb-2"
-        placeholder="Nombre del proveedor (ID)"
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
-      />
-      <button className="btn btn-danger">Eliminar</button>
-    </form>
+
+      <select
+        className="form-select mb-3"
+        value={selectedId}
+        onChange={(e) => setSelectedId(e.target.value)}
+      >
+        <option value="">Seleccionar proveedor</option>
+        {proveedores.map((p) => (
+          <option key={p.id} value={p.id}>{p.nombre}</option>
+        ))}
+      </select>
+
+      <button
+        className="btn btn-danger"
+        onClick={handleDelete}
+        disabled={!selectedId}
+      >
+        Eliminar
+      </button>
+    </div>
   );
 }

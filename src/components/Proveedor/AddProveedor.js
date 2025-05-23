@@ -1,23 +1,25 @@
-// src/components/Proveedor/AddProveedor.js
 import { useState } from "react";
-import { doc, setDoc } from "firebase/firestore";
-import db from "../../firebase";
+import { collection, addDoc } from "firebase/firestore";
+import db from "../../firebase/config";
 
 export default function AddProveedor() {
   const [nombre, setNombre] = useState("");
-  const [infoExtra, setInfoExtra] = useState("");
+  const [telefono, setTelefono] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!nombre) return alert("Nombre es requerido");
+    if (!nombre || !telefono) return alert("Todos los campos son requeridos");
 
-    const ref = doc(db, "proveedor", nombre)
-
-    await setDoc(ref, { infoExtra });
+    await addDoc(collection(db, "Proveedor"), {
+      nombreProveedor: nombre,
+      nroTelefonoProveedor: telefono,
+      fechaHoraAltaProveedor: new Date(),
+      fechaHoraBajaProveedor: null,
+    });
 
     alert("Proveedor agregado");
     setNombre("");
-    setInfoExtra("");
+    setTelefono("");
   };
 
   return (
@@ -25,15 +27,15 @@ export default function AddProveedor() {
       <h4>Agregar Proveedor</h4>
       <input
         className="form-control mb-2"
-        placeholder="Nombre del proveedor (será el ID)"
+        placeholder="Nombre del proveedor"
         value={nombre}
         onChange={(e) => setNombre(e.target.value)}
       />
       <input
         className="form-control mb-2"
-        placeholder="Información extra"
-        value={infoExtra}
-        onChange={(e) => setInfoExtra(e.target.value)}
+        placeholder="Teléfono del proveedor"
+        value={telefono}
+        onChange={(e) => setTelefono(e.target.value)}
       />
       <button className="btn btn-success">Agregar</button>
     </form>

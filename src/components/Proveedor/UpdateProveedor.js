@@ -1,39 +1,75 @@
-// src/components/Proveedor/UpdateProveedor.js
-import { useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
-import db from "../../firebase";
+import { useEffect, useState } from "react";
+import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import db from "../../firebase/config";
 
 export default function UpdateProveedor() {
-  const [nombre, setNombre] = useState("");
-  const [nuevaInfo, setNuevaInfo] = useState("");
+  const [proveedores, setProveedores] = useState([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [proveedor, setProveedor] = useState(null);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const snap = await getDocs(collection(db, "Proveedor"));
+      const lista = snap.docs.map(d => ({ id: d.id, nombre: d.data().nombreProveedor }));
+      setProveedores(lista);
+    };
+    fetch();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const load = async () => {
+      const ref = doc(db, "Proveedor", selectedId);
+      const snap = await getDoc(ref);
+      if (snap.exists()) setProveedor(snap.data());
+    };
+    load();
+  }, [selectedId]);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    const ref = doc(db, "proveedor", nombre)
-
-    await updateDoc(ref, { infoExtra: nuevaInfo });
-
+    const ref = doc(db, "Proveedor", selectedId);
+    await updateDoc(ref, {
+      nombreProveedor: proveedor.nombreProveedor,
+      nroTelefonoProveedor: proveedor.nroTelefonoProveedor,
+    });
     alert("Proveedor actualizado");
-    setNombre("");
-    setNuevaInfo("");
   };
 
   return (
-    <form onSubmit={handleUpdate} className="container my-3">
+    <div className="container my-4">
       <h4>Actualizar Proveedor</h4>
-      <input
-        className="form-control mb-2"
-        placeholder="Nombre del proveedor (ID)"
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
-      />
-      <input
-        className="form-control mb-2"
-        placeholder="Nueva información"
-        value={nuevaInfo}
-        onChange={(e) => setNuevaInfo(e.target.value)}
-      />
-      <button className="btn btn-warning">Actualizar</button>
-    </form>
+
+      <select
+        className="form-select mb-3"
+        value={selectedId}
+        onChange={(e) => setSelectedId(e.target.value)}
+      >
+        <option value="">Seleccionar proveedor</option>
+        {proveedores.map(p => (
+          <option key={p.id} value={p.id}>{p.nombre}</option>
+        ))}
+      </select>
+
+      {proveedor && (
+        <form onSubmit={handleUpdate}>
+          <input
+            className="form-control mb-2"
+            value={proveedor.nombreProveedor}
+            onChange={(e) =>
+              setProveedor({ ...proveedor, nombreProveedor: e.target.value })
+            }
+          />
+          <input
+            className="form-control mb-2"
+            value={proveedor.nroTelefonoProveedor}
+            onChange={(e) =>
+              setProveedor({ ...proveedor, nroTelefonoProveedor: e.target.value })
+            }
+          />
+          <button className="btn btn-warning">Actualizar</button>
+        </form>
+      )}
+    </div>
   );
 }
