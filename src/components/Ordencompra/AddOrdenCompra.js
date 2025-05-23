@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, addDoc, doc, setDoc } from "firebase/firestore";
-import db from "../../firebase/config";
+import db from "../../firebase";
 
 export default function AddOrdenCompra() {
   const [proveedores, setProveedores] = useState([]);

@@ -14,8 +14,7 @@ import DeleteProveedor from "./components/Proveedor/DeleteProveedor";
 // ProductoProveedor
 import AddProductoProveedor from "./components/ProveedorArticulo/AddProveedorArticulo";
 import UpdateProductoProveedor from "./components/ProveedorArticulo/UpdateProveedorArticulo";
-import DeleteProductoProveedor from "./components/ProveedorArticulo/DeleteProveedorArticulo";
-import VerProductoProveedor from "./components/Producto/VerProductoProveedor"; // conservás este
+import DeleteProductoProveedor from "./components/ProveedorArticulo/DeleteProveedorArticulo"; // conservás este
 
 // Orden de compra
 import AddOrdenCompra from "./components/Ordencompra/AddOrdenCompra";
@@ -58,7 +57,7 @@ function App() {
         <Route path="/add-producto-proveedor" element={<AddProductoProveedor />} />
         <Route path="/update-producto-proveedor" element={<UpdateProductoProveedor />} />
         <Route path="/delete-producto-proveedor" element={<DeleteProductoProveedor />} />
-        <Route path="/ver-producto-proveedor" element={<VerProductoProveedor />} />
+
 
         {/* Orden de compra */}
         <Route path="/add-orden-compra" element={<AddOrdenCompra />} />

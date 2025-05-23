@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
-import db from "../../firebase/config";
+import db from "../../firebase";
 
 export default function DeleteProveedor() {
   const [proveedores, setProveedores] = useState([]);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, doc, setDoc } from "firebase/firestore";
-import db from "../../firebase/config";
+import db from "../../firebase";
 
 export default function AddProveedorArticulo() {
   const [articulos, setArticulos] = useState([]);
@@ -16,7 +16,7 @@ export default function AddProveedorArticulo() {
     const fetchData = async () => {
       const artSnap = await getDocs(collection(db, "Articulos"));
       const provSnap = await getDocs(collection(db, "Proveedor"));
-      setArticulos(artSnap.docs.map(d => ({ id: d.id, descripcion: d.data().descripcionArticulo })));
+      setArticulos(artSnap.docs.map(d => ({ id: d.id, nombre: d.data().nombreArticulo })));
       setProveedores(provSnap.docs.map(d => ({ id: d.id, nombre: d.data().nombreProveedor })));
     };
     fetchData();
@@ -56,7 +56,7 @@ export default function AddProveedorArticulo() {
       >
         <option value="">Seleccionar artículo</option>
         {articulos.map(a => (
-          <option key={a.id} value={a.id}>{a.descripcion}</option>
+          <option key={a.id} value={a.id}>{a.nombre}</option>
         ))}
       </select>
 

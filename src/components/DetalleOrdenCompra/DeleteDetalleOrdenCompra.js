@@ -5,7 +5,7 @@ import {
   doc,
   deleteDoc,
 } from "firebase/firestore";
-import db from "../../firebase/config";
+import db from "../../firebase";
 
 export default function DeleteDetalleOrdenCompra() {
   const [ordenes, setOrdenes] = useState([]);

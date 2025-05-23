@@ -9,7 +9,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import db from "../../firebase/config";
+import db from "../../firebase";
 
 export default function UpdateEstadoOrdenCompra() {
   const [ordenes, setOrdenes] = useState([]);

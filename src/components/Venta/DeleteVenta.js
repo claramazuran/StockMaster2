@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, doc, deleteDoc } from "firebase/firestore";
-import db from "../../firebase/config";
+import db from "../../firebase";
 
 export default function DeleteVenta() {
   const [ventas, setVentas] = useState([]);

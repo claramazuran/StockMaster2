@@ -7,7 +7,7 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
-import db from "../../firebase/config";
+import db from "../../firebase";
 
 export default function UpdateDetalleOrdenCompra() {
   const [ordenes, setOrdenes] = useState([]);

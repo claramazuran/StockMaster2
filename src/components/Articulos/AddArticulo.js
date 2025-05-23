@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { collection, addDoc } from "firebase/firestore";
-import db from "../../firebase/config";
+import db from "../../firebase";
 
 export default function AddArticulo() {
+  const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [costoAlmacenamiento, setCostoAlmacenamiento] = useState("");
   const [costoCompra, setCostoCompra] = useState("");
@@ -14,6 +15,7 @@ export default function AddArticulo() {
     e.preventDefault();
 
     await addDoc(collection(db, "Articulos"), {
+      nombreArticulo: nombre,
       descripcionArticulo: descripcion,
       costoAlmacenamientoArticulo: parseFloat(costoAlmacenamiento),
       costoCompra: parseFloat(costoCompra),
@@ -23,6 +25,7 @@ export default function AddArticulo() {
     });
 
     alert("Artículo agregado");
+    setNombre("");
     setDescripcion("");
     setCostoAlmacenamiento("");
     setCostoCompra("");
@@ -34,6 +37,8 @@ export default function AddArticulo() {
   return (
     <form onSubmit={handleSubmit} className="container my-3">
       <h4>➕ Agregar Artículo</h4>
+      <input className="form-control mb-2" placeholder="nombre"
+        value={nombre} onChange={(e) => setNombre(e.target.value)} />
       <input className="form-control mb-2" placeholder="Descripción"
         value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
       <input className="form-control mb-2" placeholder="Costo de almacenamiento"
