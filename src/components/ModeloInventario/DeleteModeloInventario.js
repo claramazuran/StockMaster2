@@ -12,7 +12,7 @@ export default function DeleteModeloInventario() {
       const snap = await getDocs(collection(db, "ModeloInventario"));
       const art = await getDocs(collection(db, "Articulos"));
       setModelos(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setArticulos(art.docs.map((d) => ({ id: d.id, descripcion: d.data().descripcionArticulo })));
+      setArticulos(art.docs.map((d) => ({ id: d.id, nombre: d.data().nombreArticulo })));
     };
     fetchData();
   }, []);
@@ -37,7 +37,7 @@ export default function DeleteModeloInventario() {
         <option value="">Seleccionar modelo</option>
         {modelos.map((m) => (
           <option key={m.id} value={m.id}>
-            {m.nombreModeloInventario} - {articulos.find(a => a.id === m.codArticulo)?.descripcion || m.codArticulo}
+            {m.nombreModeloInventario} - {articulos.find(a => a.id === m.codArticulo)?.nombre || m.codArticulo}
           </option>
         ))}
       </select>

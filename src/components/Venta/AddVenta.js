@@ -11,7 +11,7 @@ export default function AddVenta() {
       const snap = await getDocs(collection(db, "Articulos"));
       setArticulos(snap.docs.map(d => ({
         id: d.id,
-        descripcion: d.data().descripcionArticulo
+        nombre: d.data().nombreArticulo
       })));
     };
     fetchArticulos();
@@ -83,7 +83,7 @@ export default function AddVenta() {
               >
                 <option value="">Seleccionar artículo</option>
                 {articulos.map((a) => (
-                  <option key={a.id} value={a.id}>{a.descripcion}</option>
+                  <option key={a.id} value={a.id}>{a.nombre}</option>
                 ))}
               </select>
             </div>

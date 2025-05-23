@@ -43,13 +43,6 @@ export default function Hub() {
         <button className="btn btn-outline-info" onClick={() => navigate("/update-estado-orden-compra")}>🔄 Cambiar Estado</button>
       </div>
 
-      {/* DETALLE ORDEN */}
-      <h5>📁 Detalle Orden de Compra</h5>
-      <div className="d-grid gap-2 mb-4">
-        <button className="btn btn-outline-primary" onClick={() => navigate("/add-detalle-orden")}>➕ Agregar Detalle</button>
-        <button className="btn btn-outline-warning" onClick={() => navigate("/update-detalle-orden")}>✏️ Editar Detalle</button>
-        <button className="btn btn-outline-danger" onClick={() => navigate("/delete-detalle-orden")}>🗑️ Eliminar Detalle</button>
-      </div>
 
       {/* VENTAS */}
       <h5>📁 Ventas</h5>

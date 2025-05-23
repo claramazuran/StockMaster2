@@ -23,7 +23,7 @@ export default function UpdateVenta() {
       const artSnap = await getDocs(collection(db, "Articulos"));
       setArticulos(artSnap.docs.map(d => ({
         id: d.id,
-        descripcion: d.data().descripcionArticulo,
+        nombre: d.data().nombreArticulo,
       })));
     };
     fetchVentasYArticulos();
@@ -95,7 +95,7 @@ export default function UpdateVenta() {
             value={item.codArticulo}
             disabled
           >
-            <option>{articulos.find(a => a.id === item.codArticulo)?.descripcion || item.codArticulo}</option>
+            <option>{articulos.find(a => a.id === item.codArticulo)?.nombre || item.codArticulo}</option>
           </select>
           <input
             type="number"

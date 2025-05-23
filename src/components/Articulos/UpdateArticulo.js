@@ -13,7 +13,7 @@ export default function UpdateArticulo() {
       const snapshot = await getDocs(collection(db, "Articulos"));
       const lista = snapshot.docs.map(doc => ({
         id: doc.id,
-        descripcion: doc.data().descripcionArticulo,
+        nombre: doc.data().descripcionnombre,
       }));
       setArticulos(lista);
     };
@@ -60,7 +60,7 @@ export default function UpdateArticulo() {
       >
         <option value="">Seleccionar artículo</option>
         {articulos.map((a) => (
-          <option key={a.id} value={a.id}>{a.descripcion}</option>
+          <option key={a.id} value={a.id}>{a.nombre}</option>
         ))}
       </select>
 

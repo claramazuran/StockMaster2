@@ -22,10 +22,6 @@ import UpdateOrdenCompra from "./components/Ordencompra/UpdateOrdenCompra";
 import DeleteOrdenCompra from "./components/Ordencompra/DeleteOrdenCompra";
 import UpdateEstadoOrdenCompra from "./components/Ordencompra/UpdateEstadoOrdenCompra";
 
-// Detalle orden de compra
-import AddDetalleOrdenCompra from "./components/DetalleOrdenCompra/AddDetalleOrdenCompra";
-import UpdateDetalleOrdenCompra from "./components/DetalleOrdenCompra/UpdateDetalleOrdenCompra";
-import DeleteDetalleOrdenCompra from "./components/DetalleOrdenCompra/DeleteDetalleOrdenCompra";
 
 // Modelo Inventario
 import AddModeloInventario from "./components/ModeloInventario/AddModeloInventario";
@@ -65,10 +61,6 @@ function App() {
         <Route path="/delete-orden-compra" element={<DeleteOrdenCompra />} />
         <Route path="/update-estado-orden-compra" element={<UpdateEstadoOrdenCompra />} />
 
-        {/* Detalle de orden de compra */}
-        <Route path="/add-detalle-orden" element={<AddDetalleOrdenCompra />} />
-        <Route path="/update-detalle-orden" element={<UpdateDetalleOrdenCompra />} />
-        <Route path="/delete-detalle-orden" element={<DeleteDetalleOrdenCompra />} />
 
         {/* Modelo de Inventario */}
         <Route path="/add-modelo-inventario" element={<AddModeloInventario />} />

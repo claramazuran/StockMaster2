@@ -14,12 +14,13 @@ export default function AddModeloInventario() {
   useEffect(() => {
     const fetchArticulos = async () => {
       const snap = await getDocs(collection(db, "Articulos"));
-      setArticulos(
-        snap.docs.map((d) => ({
-          id: d.id,
-          descripcion: d.data().descripcionArticulo,
-        }))
-      );
+setArticulos(
+  snap.docs.map((d) => ({
+    id: d.id,
+    nombre: d.data().nombreArticulo, // ✅ USAR nombreArticulo
+  }))
+);
+
     };
     fetchArticulos();
   }, []);
@@ -72,7 +73,7 @@ export default function AddModeloInventario() {
         <option value="">Seleccionar artículo</option>
         {articulos.map((a) => (
           <option key={a.id} value={a.id}>
-            {a.descripcion}
+            {a.nombre}
           </option>
         ))}
       </select>

@@ -13,7 +13,7 @@ export default function UpdateProveedorArticulo() {
     const fetch = async () => {
       const artSnap = await getDocs(collection(db, "Articulos"));
       const provSnap = await getDocs(collection(db, "Proveedor"));
-      setArticulos(artSnap.docs.map(d => ({ id: d.id, descripcion: d.data().descripcionArticulo })));
+      setArticulos(artSnap.docs.map(d => ({ id: d.id, nombre: d.data().nombreArticulo })));
       setProveedores(provSnap.docs.map(d => ({ id: d.id, nombre: d.data().nombreProveedor })));
     };
     fetch();
@@ -48,7 +48,7 @@ export default function UpdateProveedorArticulo() {
       <select className="form-select mb-2" value={articuloId} onChange={(e) => setArticuloId(e.target.value)}>
         <option value="">Seleccionar artículo</option>
         {articulos.map((a) => (
-          <option key={a.id} value={a.id}>{a.descripcion}</option>
+          <option key={a.id} value={a.id}>{a.nombre}</option>
         ))}
       </select>
 
