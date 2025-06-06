@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, doc, deleteDoc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  deleteDoc,
+  getDoc,
+  query,
+  where
+} from "firebase/firestore";
 import db from "../../firebase";
 
 export default function DeleteOrdenCompra() {
@@ -21,20 +29,41 @@ export default function DeleteOrdenCompra() {
   const handleDelete = async () => {
     if (!selectedOrdenId) return;
 
+    // Verificar estado actual
+    const estadoRef = collection(db, "OrdenCompra", selectedOrdenId, "EstadoOrdenCompra");
+    const q = query(estadoRef, where("fechaHoraBajaEstadoCompra", "==", null));
+    const estadoSnap = await getDocs(q);
+    if (!estadoSnap.empty) {
+      const estadoActual = estadoSnap.docs[0].data().nombreEstadoCompra;
+      if (["Enviada", "Finalizada"].includes(estadoActual)) {
+        return alert(`No se puede eliminar la orden porque está en estado "${estadoActual}".`);
+      }
+    }
+
     const confirm = window.confirm("¿Eliminar esta orden y sus estados?");
     if (!confirm) return;
 
-    // 1. Borrar subcolección EstadoOrdenCompra (documentos individuales)
+    // 1. Eliminar estados
     const estadosSnap = await getDocs(collection(db, "OrdenCompra", selectedOrdenId, "EstadoOrdenCompra"));
     for (const estado of estadosSnap.docs) {
       await deleteDoc(doc(db, "OrdenCompra", selectedOrdenId, "EstadoOrdenCompra", estado.id));
     }
 
-    // 2. Borrar la orden en sí
+    // 2. Eliminar detalles y artículos
+    const detallesSnap = await getDocs(collection(db, "OrdenCompra", selectedOrdenId, "DetalleOrdenCompra"));
+    for (const detalle of detallesSnap.docs) {
+      const artSnap = await getDocs(collection(db, "OrdenCompra", selectedOrdenId, "DetalleOrdenCompra", detalle.id, "articulos"));
+      for (const art of artSnap.docs) {
+        await deleteDoc(doc(db, "OrdenCompra", selectedOrdenId, "DetalleOrdenCompra", detalle.id, "articulos", art.id));
+      }
+      await deleteDoc(doc(db, "OrdenCompra", selectedOrdenId, "DetalleOrdenCompra", detalle.id));
+    }
+
+    // 3. Eliminar la orden
     await deleteDoc(doc(db, "OrdenCompra", selectedOrdenId));
 
-    alert("Orden eliminada");
-    setOrdenes(ordenes.filter(o => o.id !== selectedOrdenId));
+    alert("Orden eliminada correctamente.");
+    setOrdenes((prev) => prev.filter((o) => o.id !== selectedOrdenId));
     setSelectedOrdenId("");
   };
 

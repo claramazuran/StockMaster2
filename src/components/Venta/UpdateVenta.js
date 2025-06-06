@@ -6,6 +6,10 @@ import {
   updateDoc,
   getDoc,
   setDoc,
+  increment,
+  addDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import db from "../../firebase";
 
@@ -14,18 +18,32 @@ export default function UpdateVenta() {
   const [selectedVentaId, setSelectedVentaId] = useState("");
   const [items, setItems] = useState([]);
   const [articulos, setArticulos] = useState([]);
+  const [stockOriginal, setStockOriginal] = useState({});
+  const [modeloInventario, setModeloInventario] = useState([]);
 
   useEffect(() => {
     const fetchVentasYArticulos = async () => {
       const ventaSnap = await getDocs(collection(db, "Venta"));
-      setVentas(ventaSnap.docs.map(d => ({ id: d.id })));
+      setVentas(ventaSnap.docs.map((d) => ({ id: d.id })));
 
       const artSnap = await getDocs(collection(db, "Articulos"));
-      setArticulos(artSnap.docs.map(d => ({
-        id: d.id,
-        nombre: d.data().nombreArticulo,
-      })));
+      setArticulos(
+        artSnap.docs.map((d) => ({
+          id: d.id,
+          nombre: d.data().nombreArticulo,
+        }))
+      );
+
+      const modSnap = await getDocs(collection(db, "ModeloInventario"));
+      setModeloInventario(
+        modSnap.docs.map((d) => ({
+          codArticulo: d.data().codArticulo,
+          modelo: d.data().nombreModeloInventario,
+          puntoPedido: d.data().puntoPedido || 0,
+        }))
+      );
     };
+
     fetchVentasYArticulos();
   }, []);
 
@@ -34,12 +52,28 @@ export default function UpdateVenta() {
 
     const fetchDetalle = async () => {
       const snap = await getDocs(collection(db, "Venta", selectedVentaId, "DetalleVenta"));
-      const lista = snap.docs.map(d => ({
+      const lista = snap.docs.map((d) => ({
         codArticulo: d.id,
         ...d.data(),
       }));
+
+      const stockBackup = {};
+      for (const item of lista) {
+        const artRef = doc(db, "Articulos", item.codArticulo);
+        const artSnap = await getDoc(artRef);
+        if (artSnap.exists()) {
+          stockBackup[item.codArticulo] = {
+            stock: artSnap.data().stockActualArticulo || 0,
+            previo: item.cantidadVendidaArticulo,
+            nombre: artSnap.data().nombreArticulo,
+          };
+        }
+      }
+
+      setStockOriginal(stockBackup);
       setItems(lista);
     };
+
     fetchDetalle();
   }, [selectedVentaId]);
 
@@ -55,18 +89,98 @@ export default function UpdateVenta() {
     return acc + precio * cantidad;
   }, 0);
 
+  const verificarOCActiva = async (codArticulo) => {
+    const ocSnap = await getDocs(collection(db, "OrdenCompra"));
+    for (const oc of ocSnap.docs) {
+      const estados = await getDocs(collection(db, "OrdenCompra", oc.id, "EstadoOrdenCompra"));
+      const estadoActual = estados.docs.find((e) => e.data().fechaHoraBajaEstadoCompra === null);
+      if (!estadoActual) continue;
+      const estado = estadoActual.data().nombreEstadoCompra;
+      if (["Pendiente", "En Proceso"].includes(estado)) {
+        const detalles = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra"));
+        for (const det of detalles.docs) {
+          const articulos = await getDocs(
+            collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra", det.id, "articulos")
+          );
+          if (articulos.docs.some((a) => a.id === codArticulo)) return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const generarOC = async (codArticulo) => {
+    const fecha = new Date();
+    const ordenRef = await addDoc(collection(db, "OrdenCompra"), {
+      codProveedor: "", // se podría buscar el predeterminado si querés automatizar más
+      fechaHoraOrdenCompra: fecha,
+    });
+
+    await setDoc(doc(db, "OrdenCompra", ordenRef.id, "EstadoOrdenCompra", "Pendiente"), {
+      nombreEstadoCompra: "Pendiente",
+      fechaHoraAltaEstadoCompra: fecha,
+      fechaHoraBajaEstadoCompra: null,
+    });
+
+    await addDoc(collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra"), {
+      fechaHoraAlta: fecha,
+      fechaHoraBaja: null,
+      precioTotal: 0,
+    });
+  };
+
   const handleGuardarCambios = async () => {
+    for (const item of items) {
+      const cod = item.codArticulo;
+      const nuevo = parseInt(item.cantidadVendidaArticulo);
+      const previo = stockOriginal[cod]?.previo || 0;
+      const diff = nuevo - previo;
+
+      const artRef = doc(db, "Articulos", cod);
+      const artSnap = await getDoc(artRef);
+      const stockActual = artSnap.data().stockActualArticulo || 0;
+
+      if (diff > 0 && stockActual < diff) {
+        return alert(
+          `No hay suficiente stock para ${stockOriginal[cod].nombre}. Disponible: ${stockActual}, requerido extra: ${diff}`
+        );
+      }
+    }
+
     await updateDoc(doc(db, "Venta", selectedVentaId), {
       precioTotalVenta: precioTotal,
     });
 
     for (const item of items) {
-      const ref = doc(db, "Venta", selectedVentaId, "DetalleVenta", item.codArticulo);
-      await setDoc(ref, {
-        codArticulo: item.codArticulo,
+      const cod = item.codArticulo;
+      const nuevo = parseInt(item.cantidadVendidaArticulo);
+      const previo = stockOriginal[cod]?.previo || 0;
+      const diff = nuevo - previo;
+
+      const artRef = doc(db, "Articulos", cod);
+      await updateDoc(artRef, {
+        stockActualArticulo: increment(-diff),
+      });
+
+      // Chequeo para modelo lote fijo
+      const modelo = modeloInventario.find((m) => m.codArticulo === cod);
+      if (
+        modelo &&
+        modelo.modelo === "Lote Fijo" &&
+        stockOriginal[cod].stock - diff <= modelo.puntoPedido
+      ) {
+        const tieneOC = await verificarOCActiva(cod);
+        if (!tieneOC) {
+          await generarOC(cod);
+          alert(`⚠️ Se generó automáticamente una OC pendiente para ${stockOriginal[cod].nombre}`);
+        }
+      }
+
+      await setDoc(doc(db, "Venta", selectedVentaId, "DetalleVenta", cod), {
+        codArticulo: cod,
         precioVentaArticulo: parseFloat(item.precioVentaArticulo),
-        cantidadVendidaArticulo: parseInt(item.cantidadVendidaArticulo),
-        precioTotalVenta: parseFloat(item.precioVentaArticulo) * parseInt(item.cantidadVendidaArticulo),
+        cantidadVendidaArticulo: nuevo,
+        precioTotalVenta: parseFloat(item.precioVentaArticulo) * nuevo,
       });
     }
 
@@ -84,18 +198,18 @@ export default function UpdateVenta() {
       >
         <option value="">Seleccionar venta</option>
         {ventas.map((v) => (
-          <option key={v.id} value={v.id}>Venta #{v.id}</option>
+          <option key={v.id} value={v.id}>
+            Venta #{v.id}
+          </option>
         ))}
       </select>
 
       {items.map((item, i) => (
         <div key={i} className="card mb-3 p-3">
-          <select
-            className="form-select mb-2"
-            value={item.codArticulo}
-            disabled
-          >
-            <option>{articulos.find(a => a.id === item.codArticulo)?.nombre || item.codArticulo}</option>
+          <select className="form-select mb-2" value={item.codArticulo} disabled>
+            <option>
+              {articulos.find((a) => a.id === item.codArticulo)?.nombre || item.codArticulo}
+            </option>
           </select>
           <input
             type="number"

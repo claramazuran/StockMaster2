@@ -1,43 +1,44 @@
 import { useState } from "react";
 import { collection, addDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 import db from "../../firebase";
 
 export default function AddProveedor() {
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!nombre || !telefono) return alert("Todos los campos son requeridos");
+    if (!nombre) return alert("Nombre es requerido");
 
-    await addDoc(collection(db, "Proveedor"), {
+    const docRef = await addDoc(collection(db, "Proveedor"), {
       nombreProveedor: nombre,
       nroTelefonoProveedor: telefono,
       fechaHoraAltaProveedor: new Date(),
       fechaHoraBajaProveedor: null,
     });
 
-    alert("Proveedor agregado");
-    setNombre("");
-    setTelefono("");
+    alert("Proveedor creado. Ahora debes asociarle un artículo.");
+    navigate("/add-proveedor-articulo", { state: { idProveedor: docRef.id } });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="container my-3">
-      <h4>Agregar Proveedor</h4>
+    <form onSubmit={handleSubmit} className="container my-4">
+      <h4>➕ Alta de Proveedor</h4>
       <input
         className="form-control mb-2"
-        placeholder="Nombre del proveedor"
+        placeholder="Nombre proveedor"
         value={nombre}
         onChange={(e) => setNombre(e.target.value)}
       />
       <input
-        className="form-control mb-2"
-        placeholder="Teléfono del proveedor"
+        className="form-control mb-3"
+        placeholder="Teléfono"
         value={telefono}
         onChange={(e) => setTelefono(e.target.value)}
       />
-      <button className="btn btn-success">Agregar</button>
+      <button className="btn btn-success">Guardar</button>
     </form>
   );
 }

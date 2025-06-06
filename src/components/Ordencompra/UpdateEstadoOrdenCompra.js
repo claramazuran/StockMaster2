@@ -17,12 +17,23 @@ export default function UpdateEstadoOrdenCompra() {
   const [estadoActual, setEstadoActual] = useState(null);
   const [nuevoEstado, setNuevoEstado] = useState("");
 
-  const estadosDisponibles = ["Pendiente", "Aprobada", "En Proceso", "Completada", "Cancelada"];
+  const estadosDisponibles = [
+    "Pendiente",
+    "Aprobada",
+    "En Proceso",
+    "Completada",
+    "Cancelada",
+  ];
 
   useEffect(() => {
     const fetchOrdenes = async () => {
       const snap = await getDocs(collection(db, "OrdenCompra"));
-      setOrdenes(snap.docs.map((d) => ({ id: d.id, fecha: d.data().fechaHoraOrdenCompra.toDate() })));
+      setOrdenes(
+        snap.docs.map((d) => ({
+          id: d.id,
+          fecha: d.data().fechaHoraOrdenCompra?.toDate(),
+        }))
+      );
     };
     fetchOrdenes();
   }, []);
@@ -30,7 +41,12 @@ export default function UpdateEstadoOrdenCompra() {
   useEffect(() => {
     const fetchEstadoActual = async () => {
       if (!selectedOrdenId) return;
-      const estadoRef = collection(db, "OrdenCompra", selectedOrdenId, "EstadoOrdenCompra");
+      const estadoRef = collection(
+        db,
+        "OrdenCompra",
+        selectedOrdenId,
+        "EstadoOrdenCompra"
+      );
       const q = query(estadoRef, where("fechaHoraBajaEstadoCompra", "==", null));
       const snap = await getDocs(q);
       if (!snap.empty) {
@@ -46,16 +62,39 @@ export default function UpdateEstadoOrdenCompra() {
   const handleActualizarEstado = async () => {
     if (!nuevoEstado || !estadoActual) return;
 
+    // Bloquear modificación si el estado actual es final
+    if (
+      ["Enviada", "Finalizada", "Completada", "Cancelada"].includes(
+        estadoActual.nombreEstadoCompra
+      )
+    ) {
+      return alert(
+        `La orden está en estado "${estadoActual.nombreEstadoCompra}" y no puede ser modificada`
+      );
+    }
+
     const fecha = new Date();
 
     // 1. Cerrar estado actual
-    const actualRef = doc(db, "OrdenCompra", selectedOrdenId, "EstadoOrdenCompra", estadoActual.id);
+    const actualRef = doc(
+      db,
+      "OrdenCompra",
+      selectedOrdenId,
+      "EstadoOrdenCompra",
+      estadoActual.id
+    );
     await updateDoc(actualRef, {
       fechaHoraBajaEstadoCompra: fecha,
     });
 
     // 2. Crear nuevo estado
-    const nuevoRef = doc(db, "OrdenCompra", selectedOrdenId, "EstadoOrdenCompra", nuevoEstado);
+    const nuevoRef = doc(
+      db,
+      "OrdenCompra",
+      selectedOrdenId,
+      "EstadoOrdenCompra",
+      nuevoEstado
+    );
     await setDoc(nuevoRef, {
       nombreEstadoCompra: nuevoEstado,
       fechaHoraAltaEstadoCompra: fecha,
@@ -63,7 +102,11 @@ export default function UpdateEstadoOrdenCompra() {
     });
 
     alert(`Estado actualizado a ${nuevoEstado}`);
-    setEstadoActual({ nombreEstadoCompra: nuevoEstado, fechaHoraAltaEstadoCompra: fecha, fechaHoraBajaEstadoCompra: null });
+    setEstadoActual({
+      nombreEstadoCompra: nuevoEstado,
+      fechaHoraAltaEstadoCompra: fecha,
+      fechaHoraBajaEstadoCompra: null,
+    });
     setNuevoEstado("");
   };
 
@@ -79,7 +122,7 @@ export default function UpdateEstadoOrdenCompra() {
         <option value="">Seleccionar Orden</option>
         {ordenes.map((o) => (
           <option key={o.id} value={o.id}>
-            Orden #{o.id} - {o.fecha.toLocaleString()}
+            Orden #{o.id} - {o.fecha?.toLocaleString()}
           </option>
         ))}
       </select>
@@ -106,7 +149,11 @@ export default function UpdateEstadoOrdenCompra() {
           ))}
       </select>
 
-      <button className="btn btn-warning" onClick={handleActualizarEstado} disabled={!nuevoEstado}>
+      <button
+        className="btn btn-warning"
+        onClick={handleActualizarEstado}
+        disabled={!nuevoEstado}
+      >
         Actualizar Estado
       </button>
     </div>

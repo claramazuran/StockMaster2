@@ -6,7 +6,9 @@ import {
   getDoc,
   updateDoc,
   setDoc,
-  deleteDoc
+  deleteDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import db from "../../firebase";
 
@@ -18,6 +20,7 @@ export default function UpdateOrdenConDetalle() {
   const [proveedorId, setProveedorId] = useState("");
   const [items, setItems] = useState([]);
   const [detalleId, setDetalleId] = useState("");
+  const [estadoActual, setEstadoActual] = useState("");
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -47,6 +50,17 @@ export default function UpdateOrdenConDetalle() {
         const itemsSnap = await getDocs(collection(db, "OrdenCompra", selectedOrdenId, "DetalleOrdenCompra", detalle.id, "articulos"));
         setItems(itemsSnap.docs.map(d => ({ codArticulo: d.id, ...d.data() })));
       }
+
+      // Estado actual
+      const estadoSnap = await getDocs(query(
+        collection(db, "OrdenCompra", selectedOrdenId, "EstadoOrdenCompra"),
+        where("fechaHoraBajaEstadoCompra", "==", null)
+      ));
+      if (!estadoSnap.empty) {
+        setEstadoActual(estadoSnap.docs[0].data().nombreEstadoCompra);
+      } else {
+        setEstadoActual("");
+      }
     };
     fetchOrdenData();
   }, [selectedOrdenId]);
@@ -65,6 +79,11 @@ export default function UpdateOrdenConDetalle() {
 
   const handleGuardar = async () => {
     if (!selectedOrdenId || !proveedorId) return alert("Faltan datos.");
+
+    // No permitir modificar si el estado es Enviada o Finalizada
+    if (["Enviada", "Finalizada", "Completada", "Cancelada"].includes(estadoActual)) {
+      return alert(`La orden está en estado "${estadoActual}" y no puede modificarse.`);
+    }
 
     const total = items.reduce((acc, item) => acc + parseFloat(item.precioArticulo || 0) * parseInt(item.cantidad || 0), 0);
 
@@ -102,6 +121,10 @@ export default function UpdateOrdenConDetalle() {
 
       {selectedOrdenId && (
         <>
+          <div className="mb-2">
+            <strong>Estado actual:</strong> {estadoActual}
+          </div>
+
           <select className="form-select mb-3" value={proveedorId} onChange={(e) => setProveedorId(e.target.value)}>
             <option value="">Seleccionar proveedor</option>
             {proveedores.map((p) => (

@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, addDoc, doc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  doc,
+  setDoc,
+  updateDoc,
+  query,
+  where,
+} from "firebase/firestore";
 import db from "../../firebase";
 
 export default function AddVenta() {
@@ -7,46 +16,113 @@ export default function AddVenta() {
   const [items, setItems] = useState([]);
 
   useEffect(() => {
-    const fetchArticulos = async () => {
+    const fetchData = async () => {
       const snap = await getDocs(collection(db, "Articulos"));
-      setArticulos(snap.docs.map(d => ({
+      const data = snap.docs.map((d) => ({
         id: d.id,
-        nombre: d.data().nombreArticulo
-      })));
+        nombre: d.data().nombreArticulo,
+        stock: d.data().stockActualArticulo,
+        demanda: d.data().demandaArticulo,
+      }));
+      setArticulos(data);
     };
-    fetchArticulos();
+    fetchData();
   }, []);
 
   const handleAgregarItem = () => {
     setItems([...items, { codArticulo: "", precioVentaArticulo: "", cantidadVendidaArticulo: "" }]);
   };
 
-  const handleEliminarItem = (index) => {
+  const handleEliminarItem = (i) => {
     const nuevo = [...items];
-    nuevo.splice(index, 1);
+    nuevo.splice(i, 1);
     setItems(nuevo);
   };
 
-  const handleItemChange = (index, campo, valor) => {
+  const handleItemChange = (i, campo, valor) => {
     const nuevo = [...items];
-    nuevo[index][campo] = valor;
+    nuevo[i][campo] = valor;
     setItems(nuevo);
   };
 
-  const precioTotalVenta = items.reduce((acc, item) => {
-    const precio = parseFloat(item.precioVentaArticulo || 0);
-    const cantidad = parseInt(item.cantidadVendidaArticulo || 0);
-    return acc + (precio * cantidad);
-  }, 0);
+  const verificarOrdenActiva = async (codArticulo) => {
+    const ocSnap = await getDocs(collection(db, "OrdenCompra"));
+    for (const oc of ocSnap.docs) {
+      const estados = await getDocs(collection(db, "OrdenCompra", oc.id, "EstadoOrdenCompra"));
+      const activo = estados.docs.find(e => e.data().fechaHoraBajaEstadoCompra === null);
+      const estado = activo?.data()?.nombreEstadoCompra;
+      if (["Pendiente", "En Proceso"].includes(estado)) {
+        const detalleSnap = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra"));
+        for (const det of detalleSnap.docs) {
+          const arts = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra", det.id, "articulos"));
+          if (arts.docs.some((a) => a.id === codArticulo)) return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const verificarYGenerarOC = async (codArticulo) => {
+    const modeloSnap = await getDocs(
+      query(collection(db, "ModeloInventario"), where("codArticulo", "==", codArticulo))
+    );
+    if (modeloSnap.empty) return;
+
+    const modelo = modeloSnap.docs[0].data();
+    const modeloNombre = modelo.nombreModeloInventario;
+    const stock = articulos.find((a) => a.id === codArticulo)?.stock || 0;
+
+    if (modeloNombre === "Lote Fijo" && stock < modelo.puntoPedido) {
+      const tieneOC = await verificarOrdenActiva(codArticulo);
+      if (!tieneOC) {
+        const fecha = new Date();
+        const ordenRef = await addDoc(collection(db, "OrdenCompra"), {
+          fechaHoraOrdenCompra: fecha,
+          codProveedor: "AUTOGENERADA",
+        });
+
+        await setDoc(doc(db, "OrdenCompra", ordenRef.id, "EstadoOrdenCompra", "Pendiente"), {
+          nombreEstadoCompra: "Pendiente",
+          fechaHoraAltaEstadoCompra: fecha,
+          fechaHoraBajaEstadoCompra: null,
+        });
+
+        const detalleRef = await addDoc(collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra"), {
+          fechaHoraAlta: fecha,
+          fechaHoraBaja: null,
+          precioTotal: 0,
+        });
+
+        await setDoc(doc(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra", detalleRef.id, "articulos", codArticulo), {
+          codArticulo,
+          precioArticulo: 0,
+          cantidad: modelo.loteOptimo || 1,
+        });
+
+        console.log(`⚙️ OC autogenerada para ${codArticulo}`);
+      }
+    }
+  };
 
   const handleGuardarVenta = async () => {
     if (items.length === 0) return alert("Agregá al menos un artículo");
 
+    for (const item of items) {
+      const articulo = articulos.find((a) => a.id === item.codArticulo);
+      const cantidad = parseInt(item.cantidadVendidaArticulo);
+      if (!articulo) return alert("Artículo no encontrado");
+      if (cantidad > articulo.stock) {
+        return alert(`No hay suficiente stock de ${articulo.nombre}. Stock disponible: ${articulo.stock}`);
+      }
+    }
+
     const fecha = new Date();
+    const total = items.reduce((acc, i) =>
+      acc + parseFloat(i.precioVentaArticulo || 0) * parseInt(i.cantidadVendidaArticulo || 0), 0);
 
     const ventaRef = await addDoc(collection(db, "Venta"), {
       fechaHoraVenta: fecha,
-      precioTotalVenta: precioTotalVenta
+      precioTotalVenta: total
     });
 
     const detalleRef = collection(db, "Venta", ventaRef.id, "DetalleVenta");
@@ -58,11 +134,22 @@ export default function AddVenta() {
         cantidadVendidaArticulo: parseInt(item.cantidadVendidaArticulo),
         precioTotalVenta: parseFloat(item.precioVentaArticulo) * parseInt(item.cantidadVendidaArticulo)
       });
+
+      // Actualizar stock
+      const artRef = doc(db, "Articulos", item.codArticulo);
+      const nuevoStock = articulos.find(a => a.id === item.codArticulo).stock - parseInt(item.cantidadVendidaArticulo);
+      await updateDoc(artRef, { stockActualArticulo: nuevoStock });
+
+      // Verificar si se debe generar OC
+      await verificarYGenerarOC(item.codArticulo);
     }
 
     alert("Venta registrada exitosamente");
     setItems([]);
   };
+
+  const precioTotalVenta = items.reduce((acc, i) =>
+    acc + parseFloat(i.precioVentaArticulo || 0) * parseInt(i.cantidadVendidaArticulo || 0), 0);
 
   return (
     <div className="container my-4">
@@ -83,7 +170,9 @@ export default function AddVenta() {
               >
                 <option value="">Seleccionar artículo</option>
                 {articulos.map((a) => (
-                  <option key={a.id} value={a.id}>{a.nombre}</option>
+                  <option key={a.id} value={a.id}>
+                    {a.nombre} - Stock: {a.stock}
+                  </option>
                 ))}
               </select>
             </div>
@@ -91,7 +180,7 @@ export default function AddVenta() {
               <input
                 type="number"
                 className="form-control"
-                placeholder="Precio unitario"
+                placeholder="Precio"
                 value={item.precioVentaArticulo}
                 onChange={(e) => handleItemChange(i, "precioVentaArticulo", e.target.value)}
               />
@@ -106,7 +195,10 @@ export default function AddVenta() {
               />
             </div>
             <div className="col-md-2">
-              <button className="btn btn-outline-danger w-100" onClick={() => handleEliminarItem(i)}>
+              <button
+                className="btn btn-outline-danger w-100"
+                onClick={() => handleEliminarItem(i)}
+              >
                 ➖
               </button>
             </div>

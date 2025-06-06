@@ -66,6 +66,10 @@ export default function UpdateArticulo() {
 
       {articulo && (
         <form onSubmit={handleUpdate}>
+                    <input className="form-control mb-2" placeholder="nombre"
+            value={articulo.nombreArticulo}
+            onChange={(e) => setArticulo({ ...articulo, nombreArticulo: e.target.value })}
+          />
           <input className="form-control mb-2" placeholder="Descripción"
             value={articulo.descripcionArticulo}
             onChange={(e) => setArticulo({ ...articulo, descripcionArticulo: e.target.value })}

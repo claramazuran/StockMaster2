@@ -29,6 +29,8 @@ export default function Hub() {
                   <button className="btn btn-primary" onClick={() => navigate("/add-articulo")}>Agregar Artículo</button>
                   <button className="btn btn-light border border-dark border-1" onClick={() => navigate("/update-articulo")}>Editar Artículo</button>
                   <button className="btn btn-danger" onClick={() => navigate("/delete-articulo")}>Eliminar Artículo</button>
+                  <button className="btn btn-primary" onClick={() => navigate("/resumen-inventario")}>Resumen inventario</button>
+                  <button className="btn btn-primary" onClick={() => navigate("/ajuste-inventario")}>ajustar inventario</button>
                 </div>
               </div>
             </div>
@@ -45,6 +47,7 @@ export default function Hub() {
                   <button className="btn btn-primary" onClick={() => navigate("/add-proveedor")}>Agregar Proveedor</button>
                   <button className="btn btn-light border border-dark border-1" onClick={() => navigate("/update-proveedor")}>Editar Proveedor</button>
                   <button className="btn btn-danger" onClick={() => navigate("/delete-proveedor")}>Eliminar Proveedor</button>
+                  <button className="btn btn-primary" onClick={() => navigate("/proveedores-articulos")}>Lista Proveedor</button>
                 </div>
               </div>
             </div>
@@ -75,6 +78,7 @@ export default function Hub() {
                   <FontAwesomeIcon icon={faClipboardList} /> Orden de Compra
                 </h5>
                 <div className="d-grid gap-2">
+                <button className="btn btn-primary" onClick={() => navigate("/tabla-orden-compra")}>tabla Ordenes</button>
                   <button className="btn btn-primary" onClick={() => navigate("/add-orden-compra")}>Nueva Orden</button>
                   <button className="btn btn-light border border-dark border-1" onClick={() => navigate("/update-orden-compra")}>Editar Orden</button>
                   <button className="btn btn-danger" onClick={() => navigate("/delete-orden-compra")}>Eliminar Orden</button>
@@ -92,6 +96,7 @@ export default function Hub() {
                   <FontAwesomeIcon icon={faDollarSign} /> Ventas
                 </h5>
                 <div className="d-grid gap-2">
+                <button className="btn btn-primary" onClick={() => navigate("/tabla-venta")}>Tabla Ventas</button>
                   <button className="btn btn-primary" onClick={() => navigate("/add-venta")}>Registrar Venta</button>
                   <button className="btn btn-light border border-dark border-1" onClick={() => navigate("/update-venta")}>Editar Venta</button>
                   <button className="btn btn-danger" onClick={() => navigate("/delete-venta")}>Eliminar Venta</button>

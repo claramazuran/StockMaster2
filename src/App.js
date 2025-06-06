@@ -5,11 +5,14 @@ import Hub from "./pages/hub";
 import AddArticulo from "./components/Articulos/AddArticulo";
 import UpdateArticulo from "./components/Articulos/UpdateArticulo";
 import DeleteArticulo from "./components/Articulos/DeleteArticulo";
+import ResumenInventario from "./components/Articulos/ResumenInventario";
+import AjusteInventario from "./components/Articulos/ajusteinventario";
 
 // Proveedor
 import AddProveedor from "./components/Proveedor/AddProveedor";
 import UpdateProveedor from "./components/Proveedor/UpdateProveedor";
 import DeleteProveedor from "./components/Proveedor/DeleteProveedor";
+import ListaArticulosPorProveedor from "./components/Proveedor/ListaArticulosPorProveedor";
 
 // ProductoProveedor
 import AddProductoProveedor from "./components/ProveedorArticulo/AddProveedorArticulo";
@@ -21,6 +24,7 @@ import AddOrdenCompra from "./components/Ordencompra/AddOrdenCompra";
 import UpdateOrdenCompra from "./components/Ordencompra/UpdateOrdenCompra";
 import DeleteOrdenCompra from "./components/Ordencompra/DeleteOrdenCompra";
 import UpdateEstadoOrdenCompra from "./components/Ordencompra/UpdateEstadoOrdenCompra";
+import TablaOrdenesCompra from "./components/Ordencompra/TablaOrdenesCompra";
 
 
 // Modelo Inventario
@@ -32,6 +36,7 @@ import DeleteModeloInventario from "./components/ModeloInventario/DeleteModeloIn
 import AddVenta from "./components/Venta/AddVenta";
 import UpdateVenta from "./components/Venta/UpdateVenta";
 import DeleteVenta from "./components/Venta/DeleteVenta";
+import TablaVentas from "./components/Venta/TablaVentas";
 
 function App() {
   return (
@@ -43,11 +48,15 @@ function App() {
         <Route path="/add-articulo" element={<AddArticulo />} />
         <Route path="/update-articulo" element={<UpdateArticulo />} />
         <Route path="/delete-articulo" element={<DeleteArticulo />} />
+        <Route path="/resumen-inventario" element={<ResumenInventario />} />
+        <Route path="/ajuste-inventario" element={<AjusteInventario />} />
 
         {/* Proveedor */}
         <Route path="/add-proveedor" element={<AddProveedor />} />
         <Route path="/update-proveedor" element={<UpdateProveedor />} />
         <Route path="/delete-proveedor" element={<DeleteProveedor />} />
+        <Route path="/proveedores-articulos" element={<ListaArticulosPorProveedor />} />
+
 
         {/* Producto-Proveedor */}
         <Route path="/add-producto-proveedor" element={<AddProductoProveedor />} />
@@ -60,6 +69,7 @@ function App() {
         <Route path="/update-orden-compra" element={<UpdateOrdenCompra />} />
         <Route path="/delete-orden-compra" element={<DeleteOrdenCompra />} />
         <Route path="/update-estado-orden-compra" element={<UpdateEstadoOrdenCompra />} />
+        <Route path="/tabla-orden-compra" element={<TablaOrdenesCompra />} />
 
 
         {/* Modelo de Inventario */}
@@ -71,6 +81,7 @@ function App() {
         <Route path="/add-venta" element={<AddVenta />} />
         <Route path="/update-venta" element={<UpdateVenta />} />
         <Route path="/delete-venta" element={<DeleteVenta />} />
+        <Route path="/tabla-venta" element={<TablaVentas />} />
       </Routes>
     </Router>
   );

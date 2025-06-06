@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, addDoc, doc, setDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, setDoc, query, where } from "firebase/firestore";
 import db from "../../firebase";
 
 export default function AddOrdenConDetalle() {
@@ -18,6 +18,24 @@ export default function AddOrdenConDetalle() {
     };
     fetchData();
   }, []);
+
+  const verificarOCActiva = async (codArticulo) => {
+    const ocSnap = await getDocs(collection(db, "OrdenCompra"));
+    for (const oc of ocSnap.docs) {
+      const estados = await getDocs(collection(db, "OrdenCompra", oc.id, "EstadoOrdenCompra"));
+      const estadoActual = estados.docs.find(e => e.data().fechaHoraBajaEstadoCompra === null);
+      if (!estadoActual) continue;
+      const estado = estadoActual.data().nombreEstadoCompra;
+      if (["Pendiente", "Aprobada", "En Proceso"].includes(estado)) {
+        const detalles = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra"));
+        for (const det of detalles.docs) {
+          const articulos = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra", det.id, "articulos"));
+          if (articulos.docs.some(a => a.id === codArticulo)) return true;
+        }
+      }
+    }
+    return false;
+  };
 
   const handleAgregarItem = () => {
     setItems([...items, { codArticulo: "", precioArticulo: "", cantidad: "" }]);
@@ -39,35 +57,38 @@ export default function AddOrdenConDetalle() {
     e.preventDefault();
     if (!proveedorId || items.length === 0) return alert("Seleccioná un proveedor y agregá al menos un artículo");
 
+    // Validar existencia de OC activa por artículo
+    for (const item of items) {
+      const tieneOCActiva = await verificarOCActiva(item.codArticulo);
+      if (tieneOCActiva) {
+        return alert(`Ya existe una orden activa para el artículo ${item.codArticulo}`);
+      }
+    }
+
     const fecha = new Date();
     const precioTotal = items.reduce(
       (total, item) => total + parseFloat(item.precioArticulo || 0) * parseInt(item.cantidad || 0),
       0
     );
 
-    // 1. Crear la orden de compra
     const ordenRef = await addDoc(collection(db, "OrdenCompra"), {
       fechaHoraOrdenCompra: fecha,
       codProveedor: proveedorId,
     });
 
-    // 2. Estado inicial 'Pendiente'
     await setDoc(doc(db, "OrdenCompra", ordenRef.id, "EstadoOrdenCompra", "Pendiente"), {
       nombreEstadoCompra: "Pendiente",
       fechaHoraAltaEstadoCompra: fecha,
       fechaHoraBajaEstadoCompra: null,
     });
 
-    // 3. Detalle orden
     const detalleRef = await addDoc(collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra"), {
       fechaHoraAlta: fecha,
       fechaHoraBaja: null,
       precioTotal,
     });
 
-    // 4. Artículos
     const articulosRef = collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra", detalleRef.id, "articulos");
-
     for (const item of items) {
       await setDoc(doc(articulosRef, item.codArticulo), {
         codArticulo: item.codArticulo,
