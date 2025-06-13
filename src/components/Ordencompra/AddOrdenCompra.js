@@ -5,10 +5,20 @@ import db from "../../firebase";
 export default function AddOrdenPorArticulo() {
   const [articulosDisponibles, setArticulosDisponibles] = useState([]);
   const [items, setItems] = useState([]);
+  const [proveedores, setProveedores] = useState({}); // Mapa id -> nombre
 
-  // Cargar artículos con proveedor predeterminado activo y cálculo sugerido
+  // Cargar proveedores y artículos con proveedor predeterminado activo y cálculo sugerido
   useEffect(() => {
     const fetchArticulosConProveedor = async () => {
+      // Traer proveedores y armar un mapa id -> nombre
+      const provSnap = await getDocs(collection(db, "Proveedor"));
+      const provMap = {};
+      provSnap.docs.forEach(d => {
+        provMap[d.id] = d.data().nombreProveedor;
+      });
+      setProveedores(provMap);
+
+      // Traer artículos
       const artSnap = await getDocs(collection(db, "Articulos"));
       const articulos = [];
 
@@ -17,13 +27,17 @@ export default function AddOrdenPorArticulo() {
         if (art.fechahorabaja) continue;
 
         // Buscar proveedor predeterminado activo
-        const provSnap = await getDocs(collection(db, "Articulos", artDoc.id, "ProveedorArticulo"));
-        const pred = provSnap.docs.find(
+        const provArtSnap = await getDocs(collection(db, "Articulos", artDoc.id, "ProveedorArticulo"));
+        const pred = provArtSnap.docs.find(
           p => p.data().esProveedorPredeterminado && !p.data().fechaHoraBajaProveedorArticulo
         );
         if (!pred) continue;
 
         const proveedor = pred.data();
+
+        // Acá obtenemos el nombre real del proveedor
+        const nombreProveedorReal = provMap[proveedor.codProveedor] || proveedor.codProveedor;
+
         // Traer modelo inventario
         const modelosSnap = await getDocs(collection(db, "ModeloInventario"));
         const modelo = modelosSnap.docs
@@ -44,7 +58,7 @@ export default function AddOrdenPorArticulo() {
           id: artDoc.id,
           nombre: art.nombreArticulo,
           proveedorPredeterminado: proveedor.codProveedor,
-          nombreProveedor: proveedor.nombreProveedor || "", // si lo tenés guardado
+          nombreProveedor: nombreProveedorReal,
           cantidadSugerida,
           modelo,
           stockActual: art.stockActualArticulo || 0,
@@ -96,7 +110,7 @@ export default function AddOrdenPorArticulo() {
       }
     }
 
-    // Registrar una OC por cada artículo (puede ser 1 OC con muchos items, eso depende de tu modelo de datos)
+    // Registrar una OC por cada artículo
     for (const item of items) {
       const articulo = articulosDisponibles.find(a => a.id === item.codArticulo);
       const fecha = new Date();
@@ -116,7 +130,7 @@ export default function AddOrdenPorArticulo() {
       const detalleRef = await addDoc(collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra"), {
         fechaHoraAlta: fecha,
         fechaHoraBaja: null,
-        precioTotal: 0, // o calcula según precio artículo, si lo tenés
+        precioTotal: 0,
       });
 
       // Artículo comprado
@@ -153,7 +167,7 @@ export default function AddOrdenPorArticulo() {
                 <option value="">Seleccionar artículo</option>
                 {articulosDisponibles.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.nombre} (Proveedor: {a.nombreProveedor || a.proveedorPredeterminado})
+                    {a.nombre} (Proveedor: {a.nombreProveedor})
                   </option>
                 ))}
               </select>
