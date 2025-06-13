@@ -3,10 +3,10 @@ import {
   collection,
   getDocs,
   doc,
-  deleteDoc,
-  getDoc,
+  updateDoc,
   query,
-  where
+  where,
+  Timestamp
 } from "firebase/firestore";
 import db from "../../firebase";
 
@@ -17,10 +17,13 @@ export default function DeleteOrdenCompra() {
   useEffect(() => {
     const fetchOrdenes = async () => {
       const snap = await getDocs(collection(db, "OrdenCompra"));
-      const lista = snap.docs.map((d) => ({
-        id: d.id,
-        fecha: d.data().fechaHoraOrdenCompra?.toDate(),
-      }));
+      const lista = snap.docs
+        .map((d) => ({
+          id: d.id,
+          fecha: d.data().fechaHoraOrdenCompra?.toDate(),
+          baja: d.data().fechaHoraBajaOrdenCompra,
+        }))
+        .filter((o) => !o.baja); // mostrar solo las no dadas de baja
       setOrdenes(lista);
     };
     fetchOrdenes();
@@ -36,40 +39,34 @@ export default function DeleteOrdenCompra() {
     if (!estadoSnap.empty) {
       const estadoActual = estadoSnap.docs[0].data().nombreEstadoCompra;
       if (["Enviada", "Finalizada"].includes(estadoActual)) {
-        return alert(`No se puede eliminar la orden porque está en estado "${estadoActual}".`);
+        return alert(`No se puede dar de baja la orden porque está en estado "${estadoActual}".`);
       }
     }
 
-    const confirm = window.confirm("¿Eliminar esta orden y sus estados?");
+    const confirm = window.confirm("¿Dar de baja esta orden y sus estados?");
     if (!confirm) return;
 
-    // 1. Eliminar estados
+    // 1. Baja lógica en estados
     const estadosSnap = await getDocs(collection(db, "OrdenCompra", selectedOrdenId, "EstadoOrdenCompra"));
     for (const estado of estadosSnap.docs) {
-      await deleteDoc(doc(db, "OrdenCompra", selectedOrdenId, "EstadoOrdenCompra", estado.id));
+      await updateDoc(doc(db, "OrdenCompra", selectedOrdenId, "EstadoOrdenCompra", estado.id), {
+        fechaHoraBajaEstadoCompra: Timestamp.now(),
+      });
     }
 
-    // 2. Eliminar detalles y artículos
-    const detallesSnap = await getDocs(collection(db, "OrdenCompra", selectedOrdenId, "DetalleOrdenCompra"));
-    for (const detalle of detallesSnap.docs) {
-      const artSnap = await getDocs(collection(db, "OrdenCompra", selectedOrdenId, "DetalleOrdenCompra", detalle.id, "articulos"));
-      for (const art of artSnap.docs) {
-        await deleteDoc(doc(db, "OrdenCompra", selectedOrdenId, "DetalleOrdenCompra", detalle.id, "articulos", art.id));
-      }
-      await deleteDoc(doc(db, "OrdenCompra", selectedOrdenId, "DetalleOrdenCompra", detalle.id));
-    }
+    // 2. Baja lógica de la orden principal
+    await updateDoc(doc(db, "OrdenCompra", selectedOrdenId), {
+      fechaHoraBajaOrdenCompra: Timestamp.now(),
+    });
 
-    // 3. Eliminar la orden
-    await deleteDoc(doc(db, "OrdenCompra", selectedOrdenId));
-
-    alert("Orden eliminada correctamente.");
+    alert("Orden dada de baja correctamente.");
     setOrdenes((prev) => prev.filter((o) => o.id !== selectedOrdenId));
     setSelectedOrdenId("");
   };
 
   return (
     <div className="container my-4">
-      <h4>🗑️ Eliminar Orden de Compra</h4>
+      <h4>🗑️ Dar de baja Orden de Compra</h4>
 
       <select
         className="form-select mb-3"
@@ -89,7 +86,7 @@ export default function DeleteOrdenCompra() {
         onClick={handleDelete}
         disabled={!selectedOrdenId}
       >
-        Eliminar
+        Dar de baja
       </button>
     </div>
   );

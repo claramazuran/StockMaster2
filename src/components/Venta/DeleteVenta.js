@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, doc, deleteDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  getDoc,
+  Timestamp,
+} from "firebase/firestore";
 import db from "../../firebase";
 
 export default function DeleteVenta() {
@@ -9,7 +16,13 @@ export default function DeleteVenta() {
   useEffect(() => {
     const fetchVentas = async () => {
       const snap = await getDocs(collection(db, "Venta"));
-      setVentas(snap.docs.map((d) => ({ id: d.id })));
+      const lista = snap.docs
+        .map((d) => ({
+          id: d.id,
+          baja: d.data().fechaHoraBajaVenta || null,
+        }))
+        .filter((v) => !v.baja); // mostrar solo ventas activas
+      setVentas(lista);
     };
     fetchVentas();
   }, []);
@@ -17,26 +30,35 @@ export default function DeleteVenta() {
   const handleDelete = async () => {
     if (!selectedVentaId) return;
 
-    const confirm = window.confirm("¿Seguro que querés eliminar esta venta y su detalle?");
+    const confirm = window.confirm("¿Seguro que querés dar de baja esta venta y su detalle?");
     if (!confirm) return;
 
-    const detalleSnap = await getDocs(
-      collection(db, "Venta", selectedVentaId, "DetalleVenta")
-    );
+    // 1. Baja lógica en DetalleVenta
+    const detalleSnap = await getDocs(collection(db, "Venta", selectedVentaId, "DetalleVenta"));
     for (const docu of detalleSnap.docs) {
-      await deleteDoc(doc(db, "Venta", selectedVentaId, "DetalleVenta", docu.id));
+      const detalleRef = doc(db, "Venta", selectedVentaId, "DetalleVenta", docu.id);
+      const data = docu.data();
+      if (!data.fechaHoraBajaDetalleVenta) {
+        await updateDoc(detalleRef, {
+          fechaHoraBajaDetalleVenta: Timestamp.now(),
+        });
+      }
     }
 
-    await deleteDoc(doc(db, "Venta", selectedVentaId));
+    // 2. Baja lógica de la venta principal
+    const ventaRef = doc(db, "Venta", selectedVentaId);
+    await updateDoc(ventaRef, {
+      fechaHoraBajaVenta: Timestamp.now(),
+    });
 
-    alert("Venta eliminada");
-    setVentas(ventas.filter((v) => v.id !== selectedVentaId));
+    alert("Venta dada de baja correctamente");
+    setVentas((prev) => prev.filter((v) => v.id !== selectedVentaId));
     setSelectedVentaId("");
   };
 
   return (
     <div className="container my-4">
-      <h4>🗑️ Eliminar Venta</h4>
+      <h4>🗑️ Dar de baja Venta</h4>
 
       <select
         className="form-select mb-3"
@@ -56,7 +78,7 @@ export default function DeleteVenta() {
         disabled={!selectedVentaId}
         onClick={handleDelete}
       >
-        Eliminar Venta
+        Dar de baja Venta
       </button>
     </div>
   );

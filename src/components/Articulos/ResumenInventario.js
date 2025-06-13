@@ -79,7 +79,7 @@ export default function ResumenInventario() {
           }
         }
         // Inventario Fijo
-        else if (m.nombreModeloInventario === "Inventario Fijo") {
+        else if (m.nombreModeloInventario === "Periodo Fijo") {
           const max = Math.round((a.demandaArticulo / 30) * (pred.DemoraEntrega ?? 0) + 10);
           console.log(`Inventario Máximo actual: ${m.inventarioMaximo}, Calculado: ${max}`);
           if (m.inventarioMaximo !== max) {

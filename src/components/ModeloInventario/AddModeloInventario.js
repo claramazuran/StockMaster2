@@ -54,7 +54,7 @@ export default function AddModeloInventario() {
         loteOptimo,
         puntoPedido,
       };
-    } else if (modelo === "Inventario Fijo") {
+    } else if (modelo === "Periodo Fijo") {
       const inventarioMaximo = Math.round((D / 30) * L + parseInt(stockSeguridad));
       data = {
         ...data,
@@ -78,7 +78,7 @@ export default function AddModeloInventario() {
         onChange={(e) => setModelo(e.target.value)}
       >
         <option value="Lote Fijo">Lote Fijo</option>
-        <option value="Inventario Fijo">Inventario Fijo</option>
+        <option value="Periodo Fijo">Periodo Fijo</option>
       </select>
 
       <select

@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import {
   collection,
   getDocs,
-  deleteDoc,
   doc,
+  updateDoc,
   query,
   where,
+  Timestamp,
 } from "firebase/firestore";
 import db from "../../firebase";
 
@@ -16,17 +17,20 @@ export default function DeleteProveedor() {
   useEffect(() => {
     const fetch = async () => {
       const snap = await getDocs(collection(db, "Proveedor"));
-      const lista = snap.docs.map(d => ({
-        id: d.id,
-        nombre: d.data().nombreProveedor,
-      }));
+      const lista = snap.docs
+        .map(d => ({
+          id: d.id,
+          nombre: d.data().nombreProveedor,
+          baja: d.data().fechaHoraBajaProveedor || null,
+        }))
+        .filter(p => !p.baja); // Excluir proveedores dados de baja
       setProveedores(lista);
     };
     fetch();
   }, []);
 
   const validarBaja = async (idProveedor) => {
-    // 🔍 1. Buscar si es proveedor predeterminado en algún artículo
+    // 🔍 1. Verificar si es proveedor predeterminado en algún artículo
     const artSnap = await getDocs(collection(db, "Articulos"));
     for (const art of artSnap.docs) {
       const subSnap = await getDocs(
@@ -38,12 +42,12 @@ export default function DeleteProveedor() {
           d.data().esProveedorPredeterminado === true
       );
       if (algunoPredeterminado) {
-        alert("❌ No se puede eliminar: es proveedor predeterminado en un artículo.");
+        alert("❌ No se puede dar de baja: es proveedor predeterminado en un artículo.");
         return false;
       }
     }
 
-    // 🔍 2. Buscar si tiene una orden de compra pendiente o activa
+    // 🔍 2. Verificar si tiene órdenes de compra activas
     const ocSnap = await getDocs(
       query(collection(db, "OrdenCompra"), where("codProveedor", "==", idProveedor))
     );
@@ -56,7 +60,7 @@ export default function DeleteProveedor() {
         d => d.data().fechaHoraBajaEstadoCompra === null
       );
       if (sigueActiva) {
-        alert("❌ No se puede eliminar: tiene una orden de compra pendiente o en curso.");
+        alert("❌ No se puede dar de baja: tiene una orden de compra pendiente o en curso.");
         return false;
       }
     }
@@ -67,21 +71,24 @@ export default function DeleteProveedor() {
   const handleDelete = async () => {
     if (!selectedId) return;
 
-    const confirm = window.confirm("¿Estás seguro de eliminar este proveedor?");
+    const confirm = window.confirm("¿Estás seguro de dar de baja este proveedor?");
     if (!confirm) return;
 
     const puedeBorrar = await validarBaja(selectedId);
     if (!puedeBorrar) return;
 
-    await deleteDoc(doc(db, "Proveedor", selectedId));
+    await updateDoc(doc(db, "Proveedor", selectedId), {
+      fechaHoraBajaProveedor: Timestamp.now(),
+    });
+
     setProveedores(prev => prev.filter(p => p.id !== selectedId));
     setSelectedId("");
-    alert("Proveedor eliminado");
+    alert("Proveedor dado de baja correctamente");
   };
 
   return (
     <div className="container my-4">
-      <h4>Eliminar Proveedor</h4>
+      <h4>🗑️ Dar de baja Proveedor</h4>
 
       <select
         className="form-select mb-3"
@@ -99,7 +106,7 @@ export default function DeleteProveedor() {
         onClick={handleDelete}
         disabled={!selectedId}
       >
-        Eliminar
+        Dar de baja
       </button>
     </div>
   );

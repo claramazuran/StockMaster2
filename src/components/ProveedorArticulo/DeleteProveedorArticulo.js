@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, doc, deleteDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  getDoc,
+  Timestamp,
+} from "firebase/firestore";
 import db from "../../firebase";
 
 export default function DeleteProveedorArticulo() {
@@ -19,18 +26,35 @@ export default function DeleteProveedorArticulo() {
   }, []);
 
   const handleDelete = async () => {
-    if (!articuloId || !proveedorId) return alert("Seleccioná artículo y proveedor");
-    const confirm = window.confirm("¿Eliminar esta relación proveedor-artículo?");
+    if (!articuloId || !proveedorId)
+      return alert("Seleccioná artículo y proveedor");
+
+    const confirm = window.confirm("¿Dar de baja esta relación proveedor-artículo?");
     if (!confirm) return;
 
-    await deleteDoc(doc(db, "Articulos", articuloId, "ProveedorArticulo", proveedorId));
-    alert("Eliminado correctamente");
+    const docRef = doc(db, "Articulos", articuloId, "ProveedorArticulo", proveedorId);
+    const snap = await getDoc(docRef);
+
+    if (!snap.exists()) {
+      return alert("La relación no existe.");
+    }
+
+    const data = snap.data();
+    if (data.fechaHoraBajaProveedorArticulo) {
+      return alert("Ya se encuentra dada de baja.");
+    }
+
+    await updateDoc(docRef, {
+      fechaHoraBajaProveedorArticulo: Timestamp.now(),
+    });
+
+    alert("Relación dada de baja correctamente");
     setProveedorId("");
   };
 
   return (
     <div className="container my-4">
-      <h4>Eliminar Proveedor-Artículo</h4>
+      <h4>🗑️ Dar de baja Proveedor-Artículo</h4>
 
       <select className="form-select mb-2" value={articuloId} onChange={(e) => setArticuloId(e.target.value)}>
         <option value="">Seleccionar artículo</option>
@@ -46,8 +70,12 @@ export default function DeleteProveedorArticulo() {
         ))}
       </select>
 
-      <button className="btn btn-danger" onClick={handleDelete} disabled={!articuloId || !proveedorId}>
-        Eliminar
+      <button
+        className="btn btn-danger"
+        onClick={handleDelete}
+        disabled={!articuloId || !proveedorId}
+      >
+        Dar de baja
       </button>
     </div>
   );

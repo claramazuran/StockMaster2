@@ -51,7 +51,7 @@ export default function UpdateModeloInventario() {
         const puntoPedido = demora * (d / 30);
         modelo.loteOptimo = Math.round(lote);
         modelo.puntoPedido = Math.round(puntoPedido);
-      } else if (modelo.nombreModeloInventario === "Inventario Fijo") {
+      } else if (modelo.nombreModeloInventario === "Periodo Fijo") {
         if (!proveedor) return alert("No hay proveedor predeterminado");
         const d = artData.demandaArticulo;
         const demora = proveedor.DemoraEntrega;
@@ -108,7 +108,7 @@ export default function UpdateModeloInventario() {
             </>
           )}
 
-          {data.nombreModeloInventario === "Inventario Fijo" && (
+          {data.nombreModeloInventario === "Periodo Fijo" && (
             <input className="form-control mb-3" type="number" placeholder="Inventario máximo"
               value={data.inventarioMaximo || ""}
               readOnly
