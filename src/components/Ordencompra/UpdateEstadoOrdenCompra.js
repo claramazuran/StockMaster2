@@ -18,14 +18,7 @@ export default function UpdateEstadoOrdenCompra() {
   const [nuevoEstado, setNuevoEstado] = useState("");
   const [cargando, setCargando] = useState(false);
 
-  const estadosDisponibles = [
-    "Pendiente",
-    "Enviada",
-    "Finalizada",
-    "Cancelada",
-  ];
-
-  // SOLO MUESTRA OC activas, proveedor activo y NO FINALIZADAS NI CANCELADAS
+  // SOLO MUESTRA OC activas, proveedor activo y SOLO PENDIENTES o ENVIADAS
   useEffect(() => {
     const fetchOrdenes = async () => {
       const snap = await getDocs(collection(db, "OrdenCompra"));
@@ -52,9 +45,9 @@ export default function UpdateEstadoOrdenCompra() {
         const q = query(estadoRef, where("fechaHoraBajaEstadoCompra", "==", null));
         const estadoSnap = await getDocs(q);
         if (!estadoSnap.empty) {
-          const actual = estadoSnap.docs[0].data().nombreEstadoCompra?.trim().toLowerCase();
-          // SOLO agrego si NO es finalizada ni cancelada
-          if (actual !== "finalizada" && actual !== "cancelada") {
+          const actual = estadoSnap.docs[0].data().nombreEstadoCompra?.trim();
+          // SOLO agrego si es PENDIENTE o ENVIADA
+          if (actual === "Pendiente" || actual === "Enviada") {
             ordenesValidas.push({
               id: d.id,
               fecha: d.data().fechaHoraOrdenCompra?.toDate(),
@@ -91,6 +84,8 @@ export default function UpdateEstadoOrdenCompra() {
 
   const handleActualizarEstado = async () => {
     if (!nuevoEstado || !estadoActual) return;
+
+    // Solo permite las transiciones correctas
     if (
       (estadoActual.nombreEstadoCompra === "Pendiente" && !["Enviada", "Cancelada"].includes(nuevoEstado)) ||
       (estadoActual.nombreEstadoCompra === "Enviada" && nuevoEstado !== "Finalizada") ||
@@ -144,7 +139,7 @@ export default function UpdateEstadoOrdenCompra() {
     setNuevoEstado("");
     setCargando(false);
 
-    // Actualizar lista de órdenes (opcional: recargar)
+    // Actualizar lista de órdenes
     setOrdenes(ordenes.filter(o => o.id !== selectedOrdenId));
     setSelectedOrdenId("");
   };

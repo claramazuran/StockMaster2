@@ -2,88 +2,62 @@ import { useState, useEffect } from "react";
 import { collection, getDocs, addDoc, doc, setDoc } from "firebase/firestore";
 import db from "../../firebase";
 
-export default function AddOrdenConDetalle() {
-  const [proveedores, setProveedores] = useState([]);
-  const [articulosProveedor, setArticulosProveedor] = useState([]);
-  const [proveedorId, setProveedorId] = useState("");
+export default function AddOrdenPorArticulo() {
+  const [articulosDisponibles, setArticulosDisponibles] = useState([]);
   const [items, setItems] = useState([]);
 
-  // Traer proveedores activos
+  // Cargar artículos con proveedor predeterminado activo y cálculo sugerido
   useEffect(() => {
-    const fetchProveedores = async () => {
-      const provSnap = await getDocs(collection(db, "Proveedor"));
-      setProveedores(
-        provSnap.docs
-          .map(doc => ({
-            id: doc.id,
-            nombre: doc.data().nombreProveedor,
-            baja: doc.data().fechaHoraBajaProveedor || null,
-          }))
-          .filter(p => !p.baja)
-      );
+    const fetchArticulosConProveedor = async () => {
+      const artSnap = await getDocs(collection(db, "Articulos"));
+      const articulos = [];
+
+      for (const artDoc of artSnap.docs) {
+        const art = artDoc.data();
+        if (art.fechahorabaja) continue;
+
+        // Buscar proveedor predeterminado activo
+        const provSnap = await getDocs(collection(db, "Articulos", artDoc.id, "ProveedorArticulo"));
+        const pred = provSnap.docs.find(
+          p => p.data().esProveedorPredeterminado && !p.data().fechaHoraBajaProveedorArticulo
+        );
+        if (!pred) continue;
+
+        const proveedor = pred.data();
+        // Traer modelo inventario
+        const modelosSnap = await getDocs(collection(db, "ModeloInventario"));
+        const modelo = modelosSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .find(m => m.codArticulo === artDoc.id);
+
+        // Calcular cantidad sugerida
+        let cantidadSugerida = 1;
+        if (modelo) {
+          if (modelo.nombreModeloInventario === "Lote Fijo") {
+            cantidadSugerida = modelo.loteOptimo ?? 1;
+          } else if (modelo.nombreModeloInventario === "Periodo Fijo") {
+            cantidadSugerida = modelo.inventarioMaximo ?? 1;
+          }
+        }
+
+        articulos.push({
+          id: artDoc.id,
+          nombre: art.nombreArticulo,
+          proveedorPredeterminado: proveedor.codProveedor,
+          nombreProveedor: proveedor.nombreProveedor || "", // si lo tenés guardado
+          cantidadSugerida,
+          modelo,
+          stockActual: art.stockActualArticulo || 0,
+          puntoPedido: modelo?.puntoPedido || "-",
+        });
+      }
+      setArticulosDisponibles(articulos);
     };
-    fetchProveedores();
+    fetchArticulosConProveedor();
   }, []);
 
-  // Cuando se elige proveedor, traer solo los artículos activos que ese proveedor tiene registrado y que la relación también esté activa
-  useEffect(() => {
-    const fetchArticulosDelProveedor = async () => {
-      if (!proveedorId) {
-        setArticulosProveedor([]);
-        return;
-      }
-      const artSnap = await getDocs(collection(db, "Articulos"));
-      const disponibles = [];
-      for (const d of artSnap.docs) {
-        // Filtrar artículos dados de baja lógica
-        if (d.data().fechahorabaja) continue;
-
-        const provArtSnap = await getDocs(collection(db, "Articulos", d.id, "ProveedorArticulo"));
-        // Solo relaciones proveedor-artículo activas
-        if (
-          provArtSnap.docs.some(
-            docProv =>
-              docProv.data().codProveedor === proveedorId &&
-              !docProv.data().fechaHoraBajaProveedorArticulo
-          )
-        ) {
-          disponibles.push({ id: d.id, nombre: d.data().nombreArticulo });
-        }
-      }
-      setArticulosProveedor(disponibles);
-    };
-    fetchArticulosDelProveedor();
-    setItems([]); // Limpiar items al cambiar proveedor
-  }, [proveedorId]);
-
-  // FUNCION CLAVE: verificar si ya existe OC activa para ese artículo y proveedor
-  const existeOCActiva = async (codArticulo, proveedorId) => {
-    const ocSnap = await getDocs(collection(db, "OrdenCompra"));
-    for (const oc of ocSnap.docs) {
-      // Solo órdenes de este proveedor
-      if (oc.data().codProveedor !== proveedorId) continue;
-      // Verificar que la orden no esté dada de baja lógica
-      if (oc.data().fechaHoraBajaOrdenCompra) continue;
-      // Buscar estado actual
-      const estados = await getDocs(collection(db, "OrdenCompra", oc.id, "EstadoOrdenCompra"));
-      const estadoActual = estados.docs.find(e => e.data().fechaHoraBajaEstadoCompra === null);
-      if (!estadoActual) continue;
-      const estado = estadoActual.data().nombreEstadoCompra;
-      if (!["Pendiente", "Enviada"].includes(estado)) continue;
-      // Buscar detalles y artículos
-      const detalles = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra"));
-      for (const det of detalles.docs) {
-        const articulos = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra", det.id, "articulos"));
-        if (articulos.docs.some(a => a.id === codArticulo)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  };
-
   const handleAgregarItem = () => {
-    setItems([...items, { codArticulo: "", precioArticulo: "", cantidad: "" }]);
+    setItems([...items, { codArticulo: "", cantidad: "" }]);
   };
 
   const handleEliminarItem = (index) => {
@@ -100,77 +74,73 @@ export default function AddOrdenConDetalle() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!proveedorId || items.length === 0) return alert("Seleccioná un proveedor y agregá al menos un artículo");
+    if (items.length === 0) return alert("Agregá al menos un artículo");
 
-    // Verificar existencia de OC activa por artículo y proveedor
     for (const item of items) {
-      const yaExiste = await existeOCActiva(item.codArticulo, proveedorId);
-      if (yaExiste) {
-        return alert("Ya existe una Orden de Compra activa (pendiente o enviada) para este artículo con el proveedor seleccionado.");
+      if (!item.codArticulo || !item.cantidad) {
+        return alert("Completá todos los campos");
+      }
+      const articulo = articulosDisponibles.find(a => a.id === item.codArticulo);
+      if (!articulo) return alert("Artículo no válido");
+
+      // Validación de punto de pedido para Lote Fijo
+      if (
+        articulo.modelo &&
+        articulo.modelo.nombreModeloInventario === "Lote Fijo" &&
+        (articulo.stockActual + parseInt(item.cantidad, 10)) <= articulo.puntoPedido
+      ) {
+        return alert(
+          `No se puede crear la OC para "${articulo.nombre}":\n` +
+          `La cantidad total (${articulo.stockActual} en stock + ${item.cantidad} a pedir = ${articulo.stockActual + parseInt(item.cantidad)}) no supera el punto de pedido (${articulo.puntoPedido}).`
+        );
       }
     }
 
-    const fecha = new Date();
-    const precioTotal = items.reduce(
-      (total, item) => total + parseFloat(item.precioArticulo || 0) * parseInt(item.cantidad || 0),
-      0
-    );
-
-    const ordenRef = await addDoc(collection(db, "OrdenCompra"), {
-      fechaHoraOrdenCompra: fecha,
-      codProveedor: proveedorId,
-    });
-
-    await setDoc(doc(db, "OrdenCompra", ordenRef.id, "EstadoOrdenCompra", "Pendiente"), {
-      nombreEstadoCompra: "Pendiente",
-      fechaHoraAltaEstadoCompra: fecha,
-      fechaHoraBajaEstadoCompra: null,
-    });
-
-    const detalleRef = await addDoc(collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra"), {
-      fechaHoraAlta: fecha,
-      fechaHoraBaja: null,
-      precioTotal,
-    });
-
-    const articulosRef = collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra", detalleRef.id, "articulos");
+    // Registrar una OC por cada artículo (puede ser 1 OC con muchos items, eso depende de tu modelo de datos)
     for (const item of items) {
-      await setDoc(doc(articulosRef, item.codArticulo), {
-        codArticulo: item.codArticulo,
-        precioArticulo: parseFloat(item.precioArticulo),
+      const articulo = articulosDisponibles.find(a => a.id === item.codArticulo);
+      const fecha = new Date();
+
+      const ordenRef = await addDoc(collection(db, "OrdenCompra"), {
+        fechaHoraOrdenCompra: fecha,
+        codProveedor: articulo.proveedorPredeterminado,
+        codArticulo: articulo.id,
+      });
+
+      await setDoc(doc(db, "OrdenCompra", ordenRef.id, "EstadoOrdenCompra", "Pendiente"), {
+        nombreEstadoCompra: "Pendiente",
+        fechaHoraAltaEstadoCompra: fecha,
+        fechaHoraBajaEstadoCompra: null,
+      });
+
+      const detalleRef = await addDoc(collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra"), {
+        fechaHoraAlta: fecha,
+        fechaHoraBaja: null,
+        precioTotal: 0, // o calcula según precio artículo, si lo tenés
+      });
+
+      // Artículo comprado
+      const articulosRef = collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra", detalleRef.id, "articulos");
+      await setDoc(doc(articulosRef, articulo.id), {
+        codArticulo: articulo.id,
         cantidad: parseInt(item.cantidad),
       });
     }
 
-    alert("Orden de compra con detalle registrada correctamente");
-    setProveedorId("");
+    alert("Órdenes de compra registradas correctamente");
     setItems([]);
   };
 
   return (
     <form onSubmit={handleSubmit} className="container my-4">
-      <h4>➕ Crear Orden de Compra con Artículos</h4>
-
-      <select
-        className="form-select mb-3"
-        value={proveedorId}
-        onChange={(e) => setProveedorId(e.target.value)}
-      >
-        <option value="">Seleccionar proveedor</option>
-        {proveedores.map((p) => (
-          <option key={p.id} value={p.id}>{p.nombre}</option>
-        ))}
-      </select>
-
+      <h4>➕ Crear Orden de Compra por Artículo</h4>
       <button
         type="button"
         className="btn btn-outline-primary mb-3"
         onClick={handleAgregarItem}
-        disabled={!proveedorId}
       >
         ➕ Agregar Artículo
       </button>
-
       {items.map((item, i) => (
         <div key={i} className="card mb-3 p-3">
           <div className="row g-2 align-items-end">
@@ -181,30 +151,46 @@ export default function AddOrdenConDetalle() {
                 onChange={(e) => handleItemChange(i, "codArticulo", e.target.value)}
               >
                 <option value="">Seleccionar artículo</option>
-                {articulosProveedor.map((a) => (
-                  <option key={a.id} value={a.id}>{a.nombre}</option>
+                {articulosDisponibles.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nombre} (Proveedor: {a.nombreProveedor || a.proveedorPredeterminado})
+                  </option>
                 ))}
               </select>
             </div>
-            <div className="col-md-3">
-              <input
-                type="number"
-                className="form-control"
-                placeholder="Precio"
-                value={item.precioArticulo}
-                onChange={(e) => handleItemChange(i, "precioArticulo", e.target.value)}
-              />
-            </div>
-            <div className="col-md-3">
+            <div className="col-md-4">
               <input
                 type="number"
                 className="form-control"
                 placeholder="Cantidad"
                 value={item.cantidad}
+                min={1}
                 onChange={(e) => handleItemChange(i, "cantidad", e.target.value)}
               />
             </div>
-            <div className="col-md-2">
+            <div className="col-md-4">
+              {/* Sugerencia/cálculo para ayudar al usuario */}
+              {item.codArticulo && (() => {
+                const art = articulosDisponibles.find(a => a.id === item.codArticulo);
+                if (!art) return null;
+                return (
+                  <div>
+                    <span className="badge bg-info">
+                      Sugerido: {art.cantidadSugerida}
+                    </span>{" "}
+                    <span className="badge bg-secondary">
+                      Stock actual: {art.stockActual}
+                    </span>
+                    {art.puntoPedido !== "-" && (
+                      <span className="badge bg-warning text-dark">
+                        Punto pedido: {art.puntoPedido}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="col-md-12 mt-2">
               <button
                 className="btn btn-outline-danger w-100"
                 type="button"
@@ -216,9 +202,8 @@ export default function AddOrdenConDetalle() {
           </div>
         </div>
       ))}
-
-      <button className="btn btn-success" type="submit" disabled={!proveedorId}>
-        Crear Orden con Detalle
+      <button className="btn btn-success" type="submit">
+        Crear Orden/es de Compra
       </button>
     </form>
   );
