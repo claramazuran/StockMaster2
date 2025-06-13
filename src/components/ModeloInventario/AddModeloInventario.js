@@ -5,7 +5,6 @@ import db from "../../firebase";
 export default function AddModeloInventario() {
   const [articulos, setArticulos] = useState([]);
   const [modelo, setModelo] = useState("Lote Fijo");
-  const [stockSeguridad, setStockSeguridad] = useState("");
   const [articuloId, setArticuloId] = useState("");
 
   useEffect(() => {
@@ -23,11 +22,15 @@ export default function AddModeloInventario() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!modelo || !articuloId || !stockSeguridad) return alert("Completa los campos");
+    if (!modelo || !articuloId) return alert("Completa los campos");
 
     // Buscar proveedor predeterminado
-    const proveedoresSnap = await getDocs(collection(db, "Articulos", articuloId, "ProveedorArticulo"));
-    const predeterminado = proveedoresSnap.docs.find((doc) => doc.data().esProveedorPredeterminado === true);
+    const proveedoresSnap = await getDocs(
+      collection(db, "Articulos", articuloId, "ProveedorArticulo")
+    );
+    const predeterminado = proveedoresSnap.docs.find(
+      (doc) => doc.data().esProveedorPredeterminado === true
+    );
     if (!predeterminado) return alert("El artículo no tiene proveedor predeterminado");
 
     const proveedor = predeterminado.data();
@@ -38,6 +41,12 @@ export default function AddModeloInventario() {
     const artSnap = await getDocs(collection(db, "Articulos"));
     const articulo = artSnap.docs.find((d) => d.id === articuloId)?.data();
     const D = parseInt(articulo.demandaArticulo);
+
+    // Calcular stock de seguridad automáticamente
+    const Z = 1.65; // Nivel de servicio 95%
+    const sigma = 1; // Desviación estándar (demanda constante)
+    const T = 7; // Período de revisión en días
+    const stockSeguridad = Math.ceil(Z * sigma * Math.sqrt(T + L));
 
     let data = {
       nombreModeloInventario: modelo,
@@ -64,45 +73,43 @@ export default function AddModeloInventario() {
 
     await addDoc(collection(db, "ModeloInventario"), data);
     alert("Modelo de inventario agregado");
-    setStockSeguridad("");
     setArticuloId("");
   };
 
   return (
-    <form onSubmit={handleSubmit} className="container my-4">
-      <h4>➕ Agregar Modelo de Inventario</h4>
+    <div className="container mt-4">
+      <h3>Agregar Modelo de Inventario</h3>
+      <form onSubmit={handleSubmit}>
+        <div className="mb-3">
+          <label className="form-label">Artículo</label>
+          <select
+            className="form-select"
+            value={articuloId}
+            onChange={(e) => setArticuloId(e.target.value)}
+          >
+            <option value="">Selecciona un artículo</option>
+            {articulos.map((art) => (
+              <option key={art.id} value={art.id}>
+                {art.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <select
-        className="form-select mb-3"
-        value={modelo}
-        onChange={(e) => setModelo(e.target.value)}
-      >
-        <option value="Lote Fijo">Lote Fijo</option>
-        <option value="Periodo Fijo">Periodo Fijo</option>
-      </select>
+        <div className="mb-3">
+          <label className="form-label">Modelo</label>
+          <input
+            type="text"
+            className="form-control"
+            value={modelo}
+            onChange={(e) => setModelo(e.target.value)}
+          />
+        </div>
 
-      <select
-        className="form-select mb-3"
-        value={articuloId}
-        onChange={(e) => setArticuloId(e.target.value)}
-      >
-        <option value="">Seleccionar artículo</option>
-        {articulos.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.nombre}
-          </option>
-        ))}
-      </select>
-
-      <input
-        className="form-control mb-2"
-        placeholder="Stock de seguridad"
-        type="number"
-        value={stockSeguridad}
-        onChange={(e) => setStockSeguridad(e.target.value)}
-      />
-
-      <button className="btn btn-success">Guardar</button>
-    </form>
+        <button type="submit" className="btn btn-primary">
+          Guardar Modelo
+        </button>
+      </form>
+    </div>
   );
 }

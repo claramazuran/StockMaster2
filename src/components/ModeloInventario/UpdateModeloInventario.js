@@ -41,22 +41,33 @@ export default function UpdateModeloInventario() {
       const pred = provSnap.docs.find(d => d.data().esProveedorPredeterminado);
       const proveedor = pred?.data();
 
-      if (modelo.nombreModeloInventario === "Lote Fijo") {
-        if (!proveedor) return alert("No hay proveedor predeterminado");
+      // Calcular stock de seguridad automático
+      if (proveedor) {
+        const Z = 1.65;
+        const sigma = 1;
+        const T = 7;
+        const demora = parseInt(proveedor.DemoraEntrega);
+        const stockDeSeguridad = Math.ceil(Z * sigma * Math.sqrt(T + demora));
+
+        modelo.stockDeSeguridad = stockDeSeguridad;
+
+        // Recalcular según el modelo seleccionado
         const d = artData.demandaArticulo;
         const cp = artData.costoPedidoArticulo;
         const ca = artData.costoAlmacenamientoArticulo;
-        const demora = proveedor.DemoraEntrega;
-        const lote = Math.sqrt((2 * d * cp) / ca);
-        const puntoPedido = demora * (d / 30);
-        modelo.loteOptimo = Math.round(lote);
-        modelo.puntoPedido = Math.round(puntoPedido);
-      } else if (modelo.nombreModeloInventario === "Periodo Fijo") {
-        if (!proveedor) return alert("No hay proveedor predeterminado");
-        const d = artData.demandaArticulo;
-        const demora = proveedor.DemoraEntrega;
-        const max = (d / 30) * demora + 10;
-        modelo.inventarioMaximo = Math.round(max);
+
+        if (modelo.nombreModeloInventario === "Lote Fijo") {
+          const lote = Math.sqrt((2 * d * cp) / ca);
+          const puntoPedido = demora * (d / 30) + stockDeSeguridad;
+          modelo.loteOptimo = Math.round(lote);
+          modelo.puntoPedido = Math.round(puntoPedido);
+          modelo.inventarioMaximo = undefined;
+        } else if (modelo.nombreModeloInventario === "Periodo Fijo") {
+          const inventarioMaximo = (d / 30) * demora + stockDeSeguridad;
+          modelo.inventarioMaximo = Math.round(inventarioMaximo);
+          modelo.loteOptimo = undefined;
+          modelo.puntoPedido = undefined;
+        }
       }
 
       setData(modelo);
@@ -90,9 +101,12 @@ export default function UpdateModeloInventario() {
 
       {data && (
         <>
-          <input className="form-control mb-2" type="number" placeholder="Stock de seguridad"
-            value={data.stockDeSeguridad}
-            onChange={(e) => setData({ ...data, stockDeSeguridad: e.target.value })}
+          <input
+            className="form-control mb-2"
+            type="number"
+            placeholder="Stock de seguridad"
+            value={data.stockDeSeguridad || ""}
+            readOnly
           />
 
           {data.nombreModeloInventario === "Lote Fijo" && (

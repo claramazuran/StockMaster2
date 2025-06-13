@@ -45,56 +45,71 @@ export default function ResumenInventario() {
           continue;
         }
 
+        // Calcular stock de seguridad automático
+        const Z = 1.65;
+        const sigma = 1;
+        const T = 7;
+        const demora = parseInt(pred.DemoraEntrega) || 0;
+        const stockDeSeguridad = Math.ceil(Z * sigma * Math.sqrt(T + demora));
+
+        // Actualizar si es distinto al que está en Firestore
+        let necesitaUpdate = false;
+        if (m.stockDeSeguridad !== stockDeSeguridad) {
+          console.log(
+            `Artículo: ${a.nombreArticulo} | StockSeguridad actual: ${m.stockDeSeguridad}, Calculado: ${stockDeSeguridad}`
+          );
+          m.stockDeSeguridad = stockDeSeguridad;
+          necesitaUpdate = true;
+        }
+
+        // LOTE FIJO
         if (m.nombreModeloInventario === "Lote Fijo") {
           const d = a.demandaArticulo;
           const cp = a.costoPedidoArticulo;
           const ca = a.costoAlmacenamientoArticulo;
-          const demora = pred.DemoraEntrega ?? 0;
-
           const lote = Math.sqrt((2 * d * cp) / ca);
-          const punto = demora * (d / 30);
+          const punto = demora * (d / 30) + stockDeSeguridad;
 
           const loteOptimo = Math.round(lote);
           const puntoPedido = Math.round(punto);
 
-          console.log(`Artículo: ${a.nombreArticulo}`);
-          console.log(`   Lote óptimo actual: ${m.loteOptimo}, Calculado: ${loteOptimo}`);
-          console.log(`   Punto pedido actual: ${m.puntoPedido}, Calculado: ${puntoPedido}`);
-          console.log(`   Datos usados - demanda: ${d}, costo pedido: ${cp}, costo almacenamiento: ${ca}, demora: ${demora}`);
-
           if (m.loteOptimo !== loteOptimo || m.puntoPedido !== puntoPedido) {
-            try {
-              await updateDoc(doc(db, "ModeloInventario", m.id), {
-                loteOptimo,
-                puntoPedido
-              });
-              m.loteOptimo = loteOptimo;
-              m.puntoPedido = puntoPedido;
-              console.log(`   Actualizado en Firestore! loteOptimo: ${loteOptimo}, puntoPedido: ${puntoPedido}`);
-            } catch (e) {
-              console.error(`Error actualizando modelo para ${a.nombreArticulo}:`, e);
-            }
-          } else {
-            console.log("   No se requiere actualización, valores iguales.");
+            console.log(`Artículo: ${a.nombreArticulo}`);
+            console.log(`   Lote óptimo actual: ${m.loteOptimo}, Calculado: ${loteOptimo}`);
+            console.log(`   Punto pedido actual: ${m.puntoPedido}, Calculado: ${puntoPedido}`);
+            necesitaUpdate = true;
+            m.loteOptimo = loteOptimo;
+            m.puntoPedido = puntoPedido;
           }
         }
-        // Inventario Fijo
+        // PERÍODO FIJO
         else if (m.nombreModeloInventario === "Periodo Fijo") {
-          const max = Math.round((a.demandaArticulo / 30) * (pred.DemoraEntrega ?? 0) + 10);
-          console.log(`Inventario Máximo actual: ${m.inventarioMaximo}, Calculado: ${max}`);
+          const max = Math.round((a.demandaArticulo / 30) * demora + stockDeSeguridad);
           if (m.inventarioMaximo !== max) {
-            try {
-              await updateDoc(doc(db, "ModeloInventario", m.id), {
-                inventarioMaximo: max
-              });
-              m.inventarioMaximo = max;
-              console.log(`   Actualizado inventarioMaximo: ${max}`);
-            } catch (e) {
-              console.error(`Error actualizando inventarioMaximo para ${a.nombreArticulo}:`, e);
-            }
-          } else {
-            console.log("   No se requiere actualización de inventario máximo, valores iguales.");
+            console.log(
+              `Inventario Máximo actual: ${m.inventarioMaximo}, Calculado: ${max}`
+            );
+            necesitaUpdate = true;
+            m.inventarioMaximo = max;
           }
+        }
+
+        if (necesitaUpdate) {
+          try {
+            await updateDoc(doc(db, "ModeloInventario", m.id), {
+              stockDeSeguridad,
+              loteOptimo: m.loteOptimo ?? undefined,
+              puntoPedido: m.puntoPedido ?? undefined,
+              inventarioMaximo: m.inventarioMaximo ?? undefined,
+            });
+            console.log(
+              `   Actualizado Firestore! stockDeSeguridad: ${stockDeSeguridad}, loteOptimo: ${m.loteOptimo}, puntoPedido: ${m.puntoPedido}, inventarioMaximo: ${m.inventarioMaximo}`
+            );
+          } catch (e) {
+            console.error(`Error actualizando modelo para ${a.nombreArticulo}:`, e);
+          }
+        } else {
+          console.log("   No se requiere actualización, valores iguales.");
         }
       }
 
