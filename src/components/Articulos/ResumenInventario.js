@@ -181,11 +181,19 @@ export default function ResumenInventario() {
               if (!m) return null;
               const rowClass = getRowClass(a, m);
               const listaProv = proveedores[a.id] || [];
-              const estado = a.stockActualArticulo <= (m?.puntoPedido ?? 0) && !tieneOrdenPendiente(a.id)
-                ? "🔴 Reponer"
-                : a.stockActualArticulo <= (m?.stockDeSeguridad ?? 0)
-                ? "🟠 Faltante"
-                : "✅ OK";
+let estado;
+
+if (a.stockActualArticulo <= (m?.stockDeSeguridad ?? 0)) {
+  estado = "🟠 Faltante"; // Crítico, siempre avisar
+} else if (
+  a.stockActualArticulo <= (m?.puntoPedido ?? 0)
+  && !tieneOrdenPendiente(a.id)
+) {
+  estado = "🔴 Reponer"; // Solo si NO hay OC pendiente
+} else {
+  estado = "✅ OK";
+}
+
 
               return (
                 <tr key={a.id} className={rowClass}>
