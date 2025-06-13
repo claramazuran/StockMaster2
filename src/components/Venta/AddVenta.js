@@ -35,7 +35,10 @@ export default function AddVenta() {
   }, []);
 
   const handleAgregarItem = () => {
-    setItems([...items, { codArticulo: "", precioVentaArticulo: "", cantidadVendidaArticulo: "" }]);
+    setItems([
+      ...items,
+      { codArticulo: "", precioVentaArticulo: "", cantidadVendidaArticulo: "" },
+    ]);
   };
 
   const handleEliminarItem = (i) => {
@@ -50,16 +53,32 @@ export default function AddVenta() {
     setItems(nuevo);
   };
 
+  // Chequea si hay OC activas (Pendiente o Enviada) para ese artículo
   const verificarOrdenActiva = async (codArticulo) => {
     const ocSnap = await getDocs(collection(db, "OrdenCompra"));
     for (const oc of ocSnap.docs) {
-      const estados = await getDocs(collection(db, "OrdenCompra", oc.id, "EstadoOrdenCompra"));
-      const activo = estados.docs.find(e => e.data().fechaHoraBajaEstadoCompra === null);
+      const estados = await getDocs(
+        collection(db, "OrdenCompra", oc.id, "EstadoOrdenCompra")
+      );
+      const activo = estados.docs.find(
+        (e) => e.data().fechaHoraBajaEstadoCompra === null
+      );
       const estado = activo?.data()?.nombreEstadoCompra;
-      if (["Pendiente", "En Proceso"].includes(estado)) {
-        const detalleSnap = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra"));
+      if (["Pendiente", "Enviada"].includes(estado)) {
+        const detalleSnap = await getDocs(
+          collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra")
+        );
         for (const det of detalleSnap.docs) {
-          const arts = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra", det.id, "articulos"));
+          const arts = await getDocs(
+            collection(
+              db,
+              "OrdenCompra",
+              oc.id,
+              "DetalleOrdenCompra",
+              det.id,
+              "articulos"
+            )
+          );
           if (arts.docs.some((a) => a.id === codArticulo)) return true;
         }
       }
@@ -67,6 +86,7 @@ export default function AddVenta() {
     return false;
   };
 
+  // Si corresponde, autogenera OC para ese artículo
   const verificarYGenerarOC = async (codArticulo) => {
     const modeloSnap = await getDocs(
       query(collection(db, "ModeloInventario"), where("codArticulo", "==", codArticulo))
@@ -86,24 +106,42 @@ export default function AddVenta() {
           codProveedor: "AUTOGENERADA",
         });
 
-        await setDoc(doc(db, "OrdenCompra", ordenRef.id, "EstadoOrdenCompra", "Pendiente"), {
-          nombreEstadoCompra: "Pendiente",
-          fechaHoraAltaEstadoCompra: fecha,
-          fechaHoraBajaEstadoCompra: null,
-        });
+        await setDoc(
+          doc(db, "OrdenCompra", ordenRef.id, "EstadoOrdenCompra", "Pendiente"),
+          {
+            nombreEstadoCompra: "Pendiente",
+            fechaHoraAltaEstadoCompra: fecha,
+            fechaHoraBajaEstadoCompra: null,
+          }
+        );
 
-        const detalleRef = await addDoc(collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra"), {
-          fechaHoraAlta: fecha,
-          fechaHoraBaja: null,
-          precioTotal: 0,
-        });
+        const detalleRef = await addDoc(
+          collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra"),
+          {
+            fechaHoraAlta: fecha,
+            fechaHoraBaja: null,
+            precioTotal: 0,
+          }
+        );
 
-        await setDoc(doc(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra", detalleRef.id, "articulos", codArticulo), {
-          codArticulo,
-          precioArticulo: 0,
-          cantidad: modelo.loteOptimo || 1,
-        });
+        await setDoc(
+          doc(
+            db,
+            "OrdenCompra",
+            ordenRef.id,
+            "DetalleOrdenCompra",
+            detalleRef.id,
+            "articulos",
+            codArticulo
+          ),
+          {
+            codArticulo,
+            precioArticulo: 0,
+            cantidad: modelo.loteOptimo || 1,
+          }
+        );
 
+        // Mensaje de log en consola
         console.log(`⚙️ OC autogenerada para ${codArticulo}`);
       }
     }
@@ -117,17 +155,24 @@ export default function AddVenta() {
       const cantidad = parseInt(item.cantidadVendidaArticulo);
       if (!articulo) return alert("Artículo no encontrado");
       if (cantidad > articulo.stock) {
-        return alert(`No hay suficiente stock de ${articulo.nombre}. Stock disponible: ${articulo.stock}`);
+        return alert(
+          `No hay suficiente stock de ${articulo.nombre}. Stock disponible: ${articulo.stock}`
+        );
       }
     }
 
     const fecha = new Date();
-    const total = items.reduce((acc, i) =>
-      acc + parseFloat(i.precioVentaArticulo || 0) * parseInt(i.cantidadVendidaArticulo || 0), 0);
+    const total = items.reduce(
+      (acc, i) =>
+        acc +
+        parseFloat(i.precioVentaArticulo || 0) *
+          parseInt(i.cantidadVendidaArticulo || 0),
+      0
+    );
 
     const ventaRef = await addDoc(collection(db, "Venta"), {
       fechaHoraVenta: fecha,
-      precioTotalVenta: total
+      precioTotalVenta: total,
     });
 
     const detalleRef = collection(db, "Venta", ventaRef.id, "DetalleVenta");
@@ -137,12 +182,16 @@ export default function AddVenta() {
         codArticulo: item.codArticulo,
         precioVentaArticulo: parseFloat(item.precioVentaArticulo),
         cantidadVendidaArticulo: parseInt(item.cantidadVendidaArticulo),
-        precioTotalVenta: parseFloat(item.precioVentaArticulo) * parseInt(item.cantidadVendidaArticulo)
+        precioTotalVenta:
+          parseFloat(item.precioVentaArticulo) *
+          parseInt(item.cantidadVendidaArticulo),
       });
 
       // Actualizar stock
       const artRef = doc(db, "Articulos", item.codArticulo);
-      const nuevoStock = articulos.find(a => a.id === item.codArticulo).stock - parseInt(item.cantidadVendidaArticulo);
+      const nuevoStock =
+        articulos.find((a) => a.id === item.codArticulo).stock -
+        parseInt(item.cantidadVendidaArticulo);
       await updateDoc(artRef, { stockActualArticulo: nuevoStock });
 
       // Verificar si se debe generar OC
@@ -153,8 +202,13 @@ export default function AddVenta() {
     setItems([]);
   };
 
-  const precioTotalVenta = items.reduce((acc, i) =>
-    acc + parseFloat(i.precioVentaArticulo || 0) * parseInt(i.cantidadVendidaArticulo || 0), 0);
+  const precioTotalVenta = items.reduce(
+    (acc, i) =>
+      acc +
+      parseFloat(i.precioVentaArticulo || 0) *
+        parseInt(i.cantidadVendidaArticulo || 0),
+    0
+  );
 
   return (
     <div className="container my-4">
@@ -187,7 +241,9 @@ export default function AddVenta() {
                 className="form-control"
                 placeholder="Precio"
                 value={item.precioVentaArticulo}
-                onChange={(e) => handleItemChange(i, "precioVentaArticulo", e.target.value)}
+                onChange={(e) =>
+                  handleItemChange(i, "precioVentaArticulo", e.target.value)
+                }
               />
             </div>
             <div className="col-md-3">
@@ -196,7 +252,9 @@ export default function AddVenta() {
                 className="form-control"
                 placeholder="Cantidad"
                 value={item.cantidadVendidaArticulo}
-                onChange={(e) => handleItemChange(i, "cantidadVendidaArticulo", e.target.value)}
+                onChange={(e) =>
+                  handleItemChange(i, "cantidadVendidaArticulo", e.target.value)
+                }
               />
             </div>
             <div className="col-md-2">
