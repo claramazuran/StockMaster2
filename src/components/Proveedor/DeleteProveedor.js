@@ -47,7 +47,7 @@ export default function DeleteProveedor() {
       }
     }
 
-    // 🔍 2. Verificar si tiene órdenes de compra activas
+    // 🔍 2. Verificar si tiene órdenes de compra activas (solo "pendiente" o "enviada")
     const ocSnap = await getDocs(
       query(collection(db, "OrdenCompra"), where("codProveedor", "==", idProveedor))
     );
@@ -56,11 +56,13 @@ export default function DeleteProveedor() {
       const estadosSnap = await getDocs(
         collection(db, "OrdenCompra", orden.id, "EstadoOrdenCompra")
       );
-      const sigueActiva = estadosSnap.docs.some(
-        d => d.data().fechaHoraBajaEstadoCompra === null
+      const tieneEstadoPendienteOEnviada = estadosSnap.docs.some(
+        d =>
+          !d.data().fechaHoraBajaEstadoCompra && // Estado actual
+          (d.data().estadoOrdenCompra === "pendiente" || d.data().estadoOrdenCompra === "enviada")
       );
-      if (sigueActiva) {
-        alert("❌ No se puede dar de baja: tiene una orden de compra pendiente o en curso.");
+      if (tieneEstadoPendienteOEnviada) {
+        alert("❌ No se puede dar de baja: tiene una orden de compra pendiente o enviada.");
         return false;
       }
     }

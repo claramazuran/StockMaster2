@@ -45,10 +45,10 @@ export default function ResumenInventario() {
           continue;
         }
 
-        // Calcular stock de seguridad automático
+        // NUEVO: obtener sigma y T del proveedor predeterminado
         const Z = 1.65;
-        const sigma = 1;
-        const T = 7;
+        const sigma = pred.desviacionEstandar ? parseFloat(pred.desviacionEstandar) : 1;
+        const T = pred.periodoRevision ? parseInt(pred.periodoRevision) : 7;
         const demora = parseInt(pred.DemoraEntrega) || 0;
         const stockDeSeguridad = Math.ceil(Z * sigma * Math.sqrt(T + demora));
 

@@ -5,8 +5,6 @@ import {
   doc,
   getDoc,
   updateDoc,
-  query,
-  where,
 } from "firebase/firestore";
 import db from "../../firebase";
 
@@ -41,14 +39,14 @@ export default function UpdateModeloInventario() {
       const pred = provSnap.docs.find(d => d.data().esProveedorPredeterminado);
       const proveedor = pred?.data();
 
-      // Calcular stock de seguridad automático
+      // Calcular stock de seguridad automático con variables personalizadas
       if (proveedor) {
         const Z = 1.65;
-        const sigma = 1;
-        const T = 7;
+        const sigma = proveedor.desviacionEstandar ? parseFloat(proveedor.desviacionEstandar) : 1;
+        const T = proveedor.periodoRevision ? parseInt(proveedor.periodoRevision) : 7;
         const demora = parseInt(proveedor.DemoraEntrega);
-        const stockDeSeguridad = Math.ceil(Z * sigma * Math.sqrt(T + demora));
 
+        const stockDeSeguridad = Math.ceil(Z * sigma * Math.sqrt(T + demora));
         modelo.stockDeSeguridad = stockDeSeguridad;
 
         // Recalcular según el modelo seleccionado

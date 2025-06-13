@@ -24,7 +24,14 @@ export default function UpdateProveedorArticulo() {
       if (!articuloId || !proveedorId) return;
       const ref = doc(db, "Articulos", articuloId, "ProveedorArticulo", proveedorId);
       const snap = await getDoc(ref);
-      if (snap.exists()) setData(snap.data());
+      if (snap.exists()) {
+        const d = snap.data();
+        setData({
+          ...d,
+          desviacionEstandar: d.desviacionEstandar !== undefined ? d.desviacionEstandar : 1,
+          periodoRevision: d.periodoRevision !== undefined ? d.periodoRevision : 7
+        });
+      }
     };
     load();
   }, [articuloId, proveedorId]);
@@ -37,6 +44,8 @@ export default function UpdateProveedorArticulo() {
       DemoraEntrega: parseInt(data.DemoraEntrega),
       PrecioUnitario: parseFloat(data.PrecioUnitario),
       esProveedorPredeterminado: data.esProveedorPredeterminado,
+      desviacionEstandar: parseFloat(data.desviacionEstandar),
+      periodoRevision: parseInt(data.periodoRevision)
     });
     alert("Actualizado correctamente");
   };
@@ -81,6 +90,23 @@ export default function UpdateProveedorArticulo() {
             value={data.PrecioUnitario}
             onChange={(e) => setData({ ...data, PrecioUnitario: e.target.value })}
             placeholder="Precio unitario"
+          />
+          {/* Nuevo campo: Desviación estándar */}
+          <input
+            className="form-control mb-2"
+            type="number"
+            step="any"
+            value={data.desviacionEstandar}
+            onChange={(e) => setData({ ...data, desviacionEstandar: e.target.value })}
+            placeholder="Desviación estándar de la demanda"
+          />
+          {/* Nuevo campo: Período de revisión */}
+          <input
+            className="form-control mb-2"
+            type="number"
+            value={data.periodoRevision}
+            onChange={(e) => setData({ ...data, periodoRevision: e.target.value })}
+            placeholder="Período de revisión (días)"
           />
           <div className="form-check mb-3">
             <input

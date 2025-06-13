@@ -4,9 +4,19 @@ import db from "../../firebase";
 
 export default function TablaVentas() {
   const [ventas, setVentas] = useState([]);
+  const [nombresArticulos, setNombresArticulos] = useState({});
 
   useEffect(() => {
     const fetchVentas = async () => {
+      // 1. Traer todos los artículos y armar el mapa id -> nombre
+      const artSnap = await getDocs(collection(db, "Articulos"));
+      const nombres = {};
+      artSnap.docs.forEach(d => {
+        nombres[d.id] = d.data().nombreArticulo || d.id;
+      });
+      setNombresArticulos(nombres);
+
+      // 2. Traer ventas y detalles
       const snap = await getDocs(collection(db, "Venta"));
       const data = [];
 
@@ -52,7 +62,7 @@ export default function TablaVentas() {
               <tbody>
                 {venta.articulos.map((art, i) => (
                   <tr key={i}>
-                    <td>{art.codArticulo}</td>
+                    <td>{nombresArticulos[art.codArticulo] || art.codArticulo}</td>
                     <td>${parseFloat(art.precioVentaArticulo).toFixed(2)}</td>
                     <td>{art.cantidadVendidaArticulo}</td>
                     <td>

@@ -36,6 +36,9 @@ export default function AddModeloInventario() {
     const proveedor = predeterminado.data();
     const L = parseInt(proveedor.DemoraEntrega);
     const S = parseFloat(proveedor.CargosPedido);
+    // Ahora se usan los nuevos campos personalizados:
+    const sigma = proveedor.desviacionEstandar ? parseFloat(proveedor.desviacionEstandar) : 1;
+    const T = proveedor.periodoRevision ? parseInt(proveedor.periodoRevision) : 7;
 
     // Obtener datos del artículo
     const artSnap = await getDocs(collection(db, "Articulos"));
@@ -44,8 +47,6 @@ export default function AddModeloInventario() {
 
     // Calcular stock de seguridad automáticamente
     const Z = 1.65; // Nivel de servicio 95%
-    const sigma = 1; // Desviación estándar (demanda constante)
-    const T = 7; // Período de revisión en días
     const stockSeguridad = Math.ceil(Z * sigma * Math.sqrt(T + L));
 
     let data = {

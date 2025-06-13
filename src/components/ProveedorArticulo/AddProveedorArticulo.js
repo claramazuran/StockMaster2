@@ -16,6 +16,9 @@ export default function AddProveedorArticulo() {
   const [cargosPedido, setCargosPedido] = useState("");
   const [demora, setDemora] = useState("");
   const [esPredeterminado, setEsPredeterminado] = useState(false);
+  // Nuevos estados
+  const [desviacion, setDesviacion] = useState("1");
+  const [periodoRevision, setPeriodoRevision] = useState("7");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,6 +44,9 @@ export default function AddProveedorArticulo() {
       fechaHoraBajaProveedorArticulo: null,
       PrecioUnitario: parseFloat(precio),
       codProveedor: proveedorId,
+      // Guardar los nuevos valores
+      desviacionEstandar: parseFloat(desviacion),
+      periodoRevision: parseInt(periodoRevision),
     });
 
     alert("Proveedor-Articulo agregado correctamente");
@@ -53,6 +59,8 @@ export default function AddProveedorArticulo() {
     setPrecio("");
     setCargosPedido("");
     setDemora("");
+    setDesviacion("1");
+    setPeriodoRevision("7");
     setEsPredeterminado(false);
   };
 
@@ -110,6 +118,23 @@ export default function AddProveedorArticulo() {
         placeholder="Demora en entrega (días)"
         value={demora}
         onChange={(e) => setDemora(e.target.value)}
+      />
+      {/* Nuevo: Desviación estándar */}
+      <input
+        type="number"
+        step="any"
+        className="form-control mb-2"
+        placeholder="Desviación estándar de la demanda"
+        value={desviacion}
+        onChange={(e) => setDesviacion(e.target.value)}
+      />
+      {/* Nuevo: Período de revisión */}
+      <input
+        type="number"
+        className="form-control mb-2"
+        placeholder="Período de revisión (días)"
+        value={periodoRevision}
+        onChange={(e) => setPeriodoRevision(e.target.value)}
       />
       <div className="form-check mb-3">
         <input
