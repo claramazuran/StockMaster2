@@ -17,53 +17,72 @@ export default function TablaOrdenesCompra() {
         getDocs(collection(db, "OrdenCompra")),
       ]);
 
+      // Proveedores activos
       const provMap = {};
-      provSnap.docs.forEach((d) => (provMap[d.id] = d.data().nombreProveedor));
+      provSnap.docs.forEach((d) => {
+        if (!d.data().fechaHoraBajaProveedor) {
+          provMap[d.id] = d.data().nombreProveedor;
+        }
+      });
       setProveedores(provMap);
 
+      // Artículos activos
       const artMap = {};
-      artSnap.docs.forEach((d) => (artMap[d.id] = d.data().nombreArticulo));
+      artSnap.docs.forEach((d) => {
+        if (!d.data().fechahorabaja) {
+          artMap[d.id] = d.data().nombreArticulo;
+        }
+      });
       setArticulos(artMap);
 
+      // Órdenes de compra activas y cuyos proveedores/artículos estén activos
       const ordenesConDatos = await Promise.all(
-        ordenSnap.docs.map(async (orden) => {
-          const id = orden.id;
-          const { codProveedor, fechaHoraOrdenCompra } = orden.data();
+        ordenSnap.docs
+          .filter(orden => !orden.data().fechaHoraBajaOrdenCompra)
+          .map(async (orden) => {
+            const id = orden.id;
+            const { codProveedor, fechaHoraOrdenCompra } = orden.data();
 
-          const estadoSnap = await getDocs(query(
-            collection(db, "OrdenCompra", id, "EstadoOrdenCompra"),
-            where("fechaHoraBajaEstadoCompra", "==", null)
-          ));
-          const estado = estadoSnap.empty ? "Sin estado" : estadoSnap.docs[0].data().nombreEstadoCompra;
+            // Si el proveedor está dado de baja, no incluyas la orden
+            if (!provMap[codProveedor]) return null;
 
-          const detalleSnap = await getDocs(collection(db, "OrdenCompra", id, "DetalleOrdenCompra"));
-          const detalleDoc = detalleSnap.docs[0];
-          const detalleId = detalleDoc?.id;
-          const detalle = detalleDoc?.data();
-          const precioTotal = detalle?.precioTotal ?? 0;
+            const estadoSnap = await getDocs(query(
+              collection(db, "OrdenCompra", id, "EstadoOrdenCompra"),
+              where("fechaHoraBajaEstadoCompra", "==", null)
+            ));
+            const estado = estadoSnap.empty ? "Sin estado" : estadoSnap.docs[0].data().nombreEstadoCompra;
 
-          const articulosSnap = detalleId
-            ? await getDocs(collection(db, "OrdenCompra", id, "DetalleOrdenCompra", detalleId, "articulos"))
-            : [];
+            const detalleSnap = await getDocs(collection(db, "OrdenCompra", id, "DetalleOrdenCompra"));
+            const detalleDoc = detalleSnap.docs[0];
+            const detalleId = detalleDoc?.id;
+            const detalle = detalleDoc?.data();
+            const precioTotal = detalle?.precioTotal ?? 0;
 
-          const articulosOrden = articulosSnap.docs.map((a) => ({
-            id: a.id,
-            nombre: artMap[a.id] ?? a.id,
-            ...a.data(),
-          }));
+            const articulosSnap = detalleId
+              ? await getDocs(collection(db, "OrdenCompra", id, "DetalleOrdenCompra", detalleId, "articulos"))
+              : [];
 
-          return {
-            id,
-            proveedor: provMap[codProveedor] ?? codProveedor,
-            fecha: fechaHoraOrdenCompra?.toDate(),
-            estado,
-            precioTotal,
-            articulos: articulosOrden,
-          };
-        })
+            // Artículos activos
+            const articulosOrden = articulosSnap.docs
+              .map((a) => ({
+                id: a.id,
+                nombre: artMap[a.id] ?? a.id,
+                ...a.data(),
+              }))
+              .filter((a) => artMap[a.id]); // solo artículos activos
+
+            return {
+              id,
+              proveedor: provMap[codProveedor] ?? codProveedor,
+              fecha: fechaHoraOrdenCompra?.toDate(),
+              estado,
+              precioTotal,
+              articulos: articulosOrden,
+            };
+          })
       );
 
-      setOrdenes(ordenesConDatos);
+      setOrdenes(ordenesConDatos.filter(Boolean));
     };
 
     fetchData();

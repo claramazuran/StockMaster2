@@ -8,12 +8,19 @@ export default function ListaArticulosPorProveedor() {
 
   useEffect(() => {
     const fetchData = async () => {
+      // Solo proveedores activos
       const provSnap = await getDocs(collection(db, "Proveedor"));
-      const listaProveedores = provSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const listaProveedores = provSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((p) => !p.fechaHoraBajaProveedor);
+
       setProveedores(listaProveedores);
 
+      // Solo artículos activos
       const articulosSnap = await getDocs(collection(db, "Articulos"));
-      const articulos = articulosSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const articulos = articulosSnap.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((a) => !a.fechahorabaja);
 
       const resultado = {};
 
@@ -24,7 +31,11 @@ export default function ListaArticulosPorProveedor() {
           const sub = doc(db, "Articulos", art.id, "ProveedorArticulo", prov.id);
           const snap = await getDoc(sub);
 
-          if (snap.exists()) {
+          // Relación proveedor-artículo activa
+          if (
+            snap.exists() &&
+            !snap.data().fechaHoraBajaProveedorArticulo
+          ) {
             resultado[prov.id].push({
               articulo: art.nombreArticulo,
               esPredeterminado: snap.data().esProveedorPredeterminado || false,

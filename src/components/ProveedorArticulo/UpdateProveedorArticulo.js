@@ -8,29 +8,56 @@ export default function UpdateProveedorArticulo() {
   const [articuloId, setArticuloId] = useState("");
   const [proveedorId, setProveedorId] = useState("");
   const [data, setData] = useState(null);
+  const [bajaRelacion, setBajaRelacion] = useState(false);
 
   useEffect(() => {
     const fetch = async () => {
+      // Artículos activos
       const artSnap = await getDocs(collection(db, "Articulos"));
+      setArticulos(
+        artSnap.docs
+          .map(d => ({
+            id: d.id,
+            nombre: d.data().nombreArticulo,
+            baja: d.data().fechahorabaja || null,
+          }))
+          .filter(a => !a.baja)
+      );
+      // Proveedores activos
       const provSnap = await getDocs(collection(db, "Proveedor"));
-      setArticulos(artSnap.docs.map(d => ({ id: d.id, nombre: d.data().nombreArticulo })));
-      setProveedores(provSnap.docs.map(d => ({ id: d.id, nombre: d.data().nombreProveedor })));
+      setProveedores(
+        provSnap.docs
+          .map(d => ({
+            id: d.id,
+            nombre: d.data().nombreProveedor,
+            baja: d.data().fechaHoraBajaProveedor || null,
+          }))
+          .filter(p => !p.baja)
+      );
     };
     fetch();
   }, []);
 
   useEffect(() => {
     const load = async () => {
+      setData(null);
+      setBajaRelacion(false);
       if (!articuloId || !proveedorId) return;
       const ref = doc(db, "Articulos", articuloId, "ProveedorArticulo", proveedorId);
       const snap = await getDoc(ref);
       if (snap.exists()) {
         const d = snap.data();
-        setData({
-          ...d,
-          desviacionEstandar: d.desviacionEstandar !== undefined ? d.desviacionEstandar : 1,
-          periodoRevision: d.periodoRevision !== undefined ? d.periodoRevision : 7
-        });
+        if (d.fechaHoraBajaProveedorArticulo) {
+          setBajaRelacion(true);
+          setData(null);
+        } else {
+          setBajaRelacion(false);
+          setData({
+            ...d,
+            desviacionEstandar: d.desviacionEstandar !== undefined ? d.desviacionEstandar : 1,
+            periodoRevision: d.periodoRevision !== undefined ? d.periodoRevision : 7
+          });
+        }
       }
     };
     load();
@@ -68,7 +95,14 @@ export default function UpdateProveedorArticulo() {
         ))}
       </select>
 
-      {data && (
+      {/* Si relación dada de baja lógica */}
+      {bajaRelacion && (
+        <div className="alert alert-danger mt-3">
+          Esta relación proveedor-artículo fue dada de baja y no puede ser editada.
+        </div>
+      )}
+
+      {data && !bajaRelacion && (
         <form onSubmit={handleUpdate}>
           <input
             className="form-control mb-2"

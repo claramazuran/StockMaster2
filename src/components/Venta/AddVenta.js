@@ -18,12 +18,17 @@ export default function AddVenta() {
   useEffect(() => {
     const fetchData = async () => {
       const snap = await getDocs(collection(db, "Articulos"));
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        nombre: d.data().nombreArticulo,
-        stock: d.data().stockActualArticulo,
-        demanda: d.data().demandaArticulo,
-      }));
+      // Solo artículos activos (sin fechahorabaja)
+      const data = snap.docs
+        .map((d) => ({
+          id: d.id,
+          nombre: d.data().nombreArticulo,
+          stock: d.data().stockActualArticulo,
+          demanda: d.data().demandaArticulo,
+          baja: d.data().fechahorabaja || null,
+        }))
+        .filter((a) => !a.baja);
+
       setArticulos(data);
     };
     fetchData();

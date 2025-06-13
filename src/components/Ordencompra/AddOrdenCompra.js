@@ -8,16 +8,24 @@ export default function AddOrdenConDetalle() {
   const [proveedorId, setProveedorId] = useState("");
   const [items, setItems] = useState([]);
 
-  // Traer proveedores
+  // Traer proveedores activos
   useEffect(() => {
     const fetchProveedores = async () => {
       const provSnap = await getDocs(collection(db, "Proveedor"));
-      setProveedores(provSnap.docs.map(doc => ({ id: doc.id, nombre: doc.data().nombreProveedor })));
+      setProveedores(
+        provSnap.docs
+          .map(doc => ({
+            id: doc.id,
+            nombre: doc.data().nombreProveedor,
+            baja: doc.data().fechaHoraBajaProveedor || null,
+          }))
+          .filter(p => !p.baja)
+      );
     };
     fetchProveedores();
   }, []);
 
-  // Cuando se elige proveedor, traer solo los artículos que ese proveedor tiene registrado
+  // Cuando se elige proveedor, traer solo los artículos activos que ese proveedor tiene registrado y que la relación también esté activa
   useEffect(() => {
     const fetchArticulosDelProveedor = async () => {
       if (!proveedorId) {
@@ -27,8 +35,18 @@ export default function AddOrdenConDetalle() {
       const artSnap = await getDocs(collection(db, "Articulos"));
       const disponibles = [];
       for (const d of artSnap.docs) {
+        // Filtrar artículos dados de baja lógica
+        if (d.data().fechahorabaja) continue;
+
         const provArtSnap = await getDocs(collection(db, "Articulos", d.id, "ProveedorArticulo"));
-        if (provArtSnap.docs.some(docProv => docProv.data().codProveedor === proveedorId)) {
+        // Solo relaciones proveedor-artículo activas
+        if (
+          provArtSnap.docs.some(
+            docProv =>
+              docProv.data().codProveedor === proveedorId &&
+              !docProv.data().fechaHoraBajaProveedorArticulo
+          )
+        ) {
           disponibles.push({ id: d.id, nombre: d.data().nombreArticulo });
         }
       }
@@ -44,6 +62,8 @@ export default function AddOrdenConDetalle() {
     for (const oc of ocSnap.docs) {
       // Solo órdenes de este proveedor
       if (oc.data().codProveedor !== proveedorId) continue;
+      // Verificar que la orden no esté dada de baja lógica
+      if (oc.data().fechaHoraBajaOrdenCompra) continue;
       // Buscar estado actual
       const estados = await getDocs(collection(db, "OrdenCompra", oc.id, "EstadoOrdenCompra"));
       const estadoActual = estados.docs.find(e => e.data().fechaHoraBajaEstadoCompra === null);

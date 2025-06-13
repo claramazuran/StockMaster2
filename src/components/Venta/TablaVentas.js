@@ -5,16 +5,22 @@ import db from "../../firebase";
 export default function TablaVentas() {
   const [ventas, setVentas] = useState([]);
   const [nombresArticulos, setNombresArticulos] = useState({});
+  const [articulosActivos, setArticulosActivos] = useState({});
 
   useEffect(() => {
     const fetchVentas = async () => {
-      // 1. Traer todos los artículos y armar el mapa id -> nombre
+      // 1. Traer todos los artículos y armar el mapa id -> nombre, solo activos
       const artSnap = await getDocs(collection(db, "Articulos"));
       const nombres = {};
+      const activos = {};
       artSnap.docs.forEach(d => {
-        nombres[d.id] = d.data().nombreArticulo || d.id;
+        if (!d.data().fechahorabaja) {
+          nombres[d.id] = d.data().nombreArticulo || d.id;
+          activos[d.id] = true;
+        }
       });
       setNombresArticulos(nombres);
+      setArticulosActivos(activos);
 
       // 2. Traer ventas y detalles
       const snap = await getDocs(collection(db, "Venta"));
@@ -25,7 +31,13 @@ export default function TablaVentas() {
         const ventaData = docVenta.data();
 
         const detalleSnap = await getDocs(collection(db, "Venta", ventaId, "DetalleVenta"));
-        const articulos = detalleSnap.docs.map(d => d.data());
+        // Solo los artículos activos
+        const articulos = detalleSnap.docs
+          .map(d => d.data())
+          .filter(a => activos[a.codArticulo]);
+
+        // Si no hay ningún artículo activo, no mostrar esta venta
+        if (articulos.length === 0) continue;
 
         data.push({
           id: ventaId,

@@ -18,21 +18,27 @@ export default function UpdateVenta() {
   const [selectedVentaId, setSelectedVentaId] = useState("");
   const [items, setItems] = useState([]);
   const [articulos, setArticulos] = useState([]);
+  const [articulosActivos, setArticulosActivos] = useState({});
   const [stockOriginal, setStockOriginal] = useState({});
   const [modeloInventario, setModeloInventario] = useState([]);
 
   useEffect(() => {
     const fetchVentasYArticulos = async () => {
       const ventaSnap = await getDocs(collection(db, "Venta"));
+      // Solo guardamos ventas por ahora, filtraremos después
       setVentas(ventaSnap.docs.map((d) => ({ id: d.id })));
 
       const artSnap = await getDocs(collection(db, "Articulos"));
-      setArticulos(
-        artSnap.docs.map((d) => ({
-          id: d.id,
-          nombre: d.data().nombreArticulo,
-        }))
-      );
+      // Solo artículos activos
+      const activos = {};
+      const listaArticulos = artSnap.docs
+        .filter(d => !d.data().fechahorabaja)
+        .map(d => {
+          activos[d.id] = true;
+          return { id: d.id, nombre: d.data().nombreArticulo };
+        });
+      setArticulos(listaArticulos);
+      setArticulosActivos(activos);
 
       const modSnap = await getDocs(collection(db, "ModeloInventario"));
       setModeloInventario(
@@ -52,10 +58,20 @@ export default function UpdateVenta() {
 
     const fetchDetalle = async () => {
       const snap = await getDocs(collection(db, "Venta", selectedVentaId, "DetalleVenta"));
-      const lista = snap.docs.map((d) => ({
-        codArticulo: d.id,
-        ...d.data(),
-      }));
+      // Solo los artículos activos
+      const lista = snap.docs
+        .map((d) => ({
+          codArticulo: d.id,
+          ...d.data(),
+        }))
+        .filter(item => articulosActivos[item.codArticulo]);
+
+      // Si la venta no tiene artículos activos, no la mostramos
+      if (lista.length === 0) {
+        setItems([]);
+        setSelectedVentaId(""); // Limpiamos selección
+        return;
+      }
 
       const stockBackup = {};
       for (const item of lista) {
@@ -75,7 +91,8 @@ export default function UpdateVenta() {
     };
 
     fetchDetalle();
-  }, [selectedVentaId]);
+    // eslint-disable-next-line
+  }, [selectedVentaId, articulosActivos]); // Para recargar si cambia el set de activos
 
   const handleItemChange = (index, campo, valor) => {
     const nuevo = [...items];
@@ -187,6 +204,12 @@ export default function UpdateVenta() {
     alert("Venta actualizada correctamente");
   };
 
+  // Ventas solo con artículos activos
+  const ventasConArticulosActivos = ventas.filter(async (v) => {
+    const snap = await getDocs(collection(db, "Venta", v.id, "DetalleVenta"));
+    return snap.docs.some(d => articulosActivos[d.id]);
+  });
+
   return (
     <div className="container my-4">
       <h4>✏️ Actualizar Venta</h4>
@@ -232,7 +255,7 @@ export default function UpdateVenta() {
         <strong>Total actualizado:</strong> ${precioTotal.toFixed(2)}
       </div>
 
-      {selectedVentaId && (
+      {selectedVentaId && items.length > 0 && (
         <button className="btn btn-warning" onClick={handleGuardarCambios}>
           Guardar Cambios
         </button>

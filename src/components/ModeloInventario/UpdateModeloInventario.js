@@ -18,22 +18,51 @@ export default function UpdateModeloInventario() {
     const fetchAll = async () => {
       const snap = await getDocs(collection(db, "ModeloInventario"));
       const art = await getDocs(collection(db, "Articulos"));
-      setModelos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setArticulos(art.docs.map(d => ({ id: d.id, nombre: d.data().nombreArticulo })));
+
+      // Artículos activos
+      const articulosActivos = art.docs
+        .map(d => ({
+          id: d.id,
+          nombre: d.data().nombreArticulo,
+          baja: d.data().fechahorabaja || null,
+        }))
+        .filter(a => !a.baja);
+
+      // Modelos activos Y cuyo artículo siga activo
+      const modelosFiltrados = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(m =>
+          !m.fechahorabaja &&
+          articulosActivos.some(a => a.id === m.codArticulo)
+        );
+
+      setArticulos(articulosActivos);
+      setModelos(modelosFiltrados);
     };
     fetchAll();
   }, []);
 
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId) {
+      setData(null);
+      return;
+    }
     const load = async () => {
       const ref = doc(db, "ModeloInventario", selectedId);
       const snap = await getDoc(ref);
-      if (!snap.exists()) return;
+      if (!snap.exists() || snap.data().fechahorabaja) {
+        setData(null);
+        return;
+      }
       const modelo = snap.data();
 
+      // Verificar que el artículo asociado también esté activo
       const artSnap = await getDoc(doc(db, "Articulos", modelo.codArticulo));
       const artData = artSnap.data();
+      if (!artData || artData.fechahorabaja) {
+        setData(null);
+        return;
+      }
 
       const provSnap = await getDocs(collection(db, "Articulos", modelo.codArticulo, "ProveedorArticulo"));
       const pred = provSnap.docs.find(d => d.data().esProveedorPredeterminado);

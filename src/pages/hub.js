@@ -80,7 +80,6 @@ export default function Hub() {
                 <button className="btn btn-primary" onClick={() => navigate("/tabla-orden-compra")}>tabla Ordenes</button>
                   <button className="btn btn-primary" onClick={() => navigate("/add-orden-compra")}>Nueva Orden</button>
                   <button className="btn btn-light border border-dark border-1" onClick={() => navigate("/update-orden-compra")}>Editar Orden</button>
-                  <button className="btn btn-danger" onClick={() => navigate("/delete-orden-compra")}>Eliminar Orden</button>
                   <button className="btn btn-info" onClick={() => navigate("/update-estado-orden-compra")}>Cambiar Estado</button>
                 </div>
               </div>

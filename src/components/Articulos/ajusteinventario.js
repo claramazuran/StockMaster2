@@ -11,10 +11,15 @@ export default function AjusteInventario() {
   useEffect(() => {
     const fetchArticulos = async () => {
       const snap = await getDocs(collection(db, "Articulos"));
-      setArticulos(snap.docs.map((d) => ({
-        id: d.id,
-        nombre: d.data().nombreArticulo,
-      })));
+      setArticulos(
+        snap.docs
+          .map((d) => ({
+            id: d.id,
+            nombre: d.data().nombreArticulo,
+            baja: d.data().fechahorabaja || null,
+          }))
+          .filter((a) => !a.baja)
+      );
     };
     fetchArticulos();
   }, []);

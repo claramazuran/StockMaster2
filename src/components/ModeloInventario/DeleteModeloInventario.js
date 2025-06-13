@@ -11,16 +11,20 @@ export default function DeleteModeloInventario() {
     const fetchData = async () => {
       const snap = await getDocs(collection(db, "ModeloInventario"));
       const art = await getDocs(collection(db, "Articulos"));
+
       setModelos(
         snap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
           .filter((m) => !m.fechahorabaja) // excluir los dados de baja
       );
       setArticulos(
-        art.docs.map((d) => ({
-          id: d.id,
-          nombre: d.data().nombreArticulo,
-        }))
+        art.docs
+          .map((d) => ({
+            id: d.id,
+            nombre: d.data().nombreArticulo,
+            baja: d.data().fechahorabaja || null,
+          }))
+          .filter((a) => !a.baja)
       );
     };
     fetchData();
@@ -50,11 +54,16 @@ export default function DeleteModeloInventario() {
         onChange={(e) => setSelectedId(e.target.value)}
       >
         <option value="">Seleccionar modelo</option>
-        {modelos.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.nombreModeloInventario} - {articulos.find((a) => a.id === m.codArticulo)?.nombre || m.codArticulo}
-          </option>
-        ))}
+        {modelos.map((m) => {
+          // Si el artículo asociado está dado de baja, tampoco se muestra el modelo
+          const art = articulos.find((a) => a.id === m.codArticulo);
+          if (!art) return null;
+          return (
+            <option key={m.id} value={m.id}>
+              {m.nombreModeloInventario} - {art.nombre}
+            </option>
+          );
+        })}
       </select>
 
       <button className="btn btn-danger" onClick={handleDelete} disabled={!selectedId}>

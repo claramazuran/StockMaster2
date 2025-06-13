@@ -22,11 +22,29 @@ export default function AddProveedorArticulo() {
 
   useEffect(() => {
     const fetchData = async () => {
+      // Solo artículos activos
       const artSnap = await getDocs(collection(db, "Articulos"));
-      const provSnap = await getDocs(collection(db, "Proveedor"));
+      setArticulos(
+        artSnap.docs
+          .map((d) => ({
+            id: d.id,
+            nombre: d.data().nombreArticulo,
+            baja: d.data().fechahorabaja || null,
+          }))
+          .filter((a) => !a.baja)
+      );
 
-      setArticulos(artSnap.docs.map((d) => ({ id: d.id, nombre: d.data().nombreArticulo })));
-      setProveedores(provSnap.docs.map((d) => ({ id: d.id, nombre: d.data().nombreProveedor })));
+      // Solo proveedores activos
+      const provSnap = await getDocs(collection(db, "Proveedor"));
+      setProveedores(
+        provSnap.docs
+          .map((d) => ({
+            id: d.id,
+            nombre: d.data().nombreProveedor,
+            baja: d.data().fechaHoraBajaProveedor || null,
+          }))
+          .filter((p) => !p.baja)
+      );
     };
     fetchData();
   }, []);

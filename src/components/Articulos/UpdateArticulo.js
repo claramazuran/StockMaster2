@@ -7,26 +7,32 @@ export default function UpdateArticulo() {
   const [selectedId, setSelectedId] = useState("");
   const [articulo, setArticulo] = useState(null);
 
-  // Obtener lista de artículos
+  // Obtener lista de artículos activos (sin baja lógica)
   useEffect(() => {
     const fetchArticulos = async () => {
       const snapshot = await getDocs(collection(db, "Articulos"));
-      const lista = snapshot.docs.map(doc => ({
-        id: doc.id,
-        nombre: doc.data().nombreArticulo,
-      }));
+      const lista = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          nombre: doc.data().nombreArticulo,
+          baja: doc.data().fechahorabaja || null,
+        }))
+        .filter((a) => !a.baja);
       setArticulos(lista);
     };
     fetchArticulos();
   }, []);
 
-  // Cargar artículo seleccionado
+  // Cargar artículo seleccionado, solo si está activo
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId) {
+      setArticulo(null);
+      return;
+    }
     const cargarArticulo = async () => {
       const ref = doc(db, "Articulos", selectedId);
       const snap = await getDoc(ref);
-      if (snap.exists()) {
+      if (snap.exists() && !snap.data().fechahorabaja) {
         setArticulo(snap.data());
       } else {
         setArticulo(null);

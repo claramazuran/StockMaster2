@@ -25,12 +25,24 @@ export default function UpdateEstadoOrdenCompra() {
     "Cancelada",
   ];
 
-  // SOLO MUESTRA OC NO FINALIZADAS NI CANCELADAS
+  // SOLO MUESTRA OC activas, proveedor activo y NO FINALIZADAS NI CANCELADAS
   useEffect(() => {
     const fetchOrdenes = async () => {
       const snap = await getDocs(collection(db, "OrdenCompra"));
+      const provSnap = await getDocs(collection(db, "Proveedor"));
+      const proveedoresActivos = {};
+      provSnap.docs.forEach(p => {
+        if (!p.data().fechaHoraBajaProveedor) {
+          proveedoresActivos[p.id] = true;
+        }
+      });
+
       let ordenesValidas = [];
       for (const d of snap.docs) {
+        // Filtrar baja lógica OC y proveedor
+        if (d.data().fechaHoraBajaOrdenCompra) continue;
+        if (!proveedoresActivos[d.data().codProveedor]) continue;
+
         const estadoRef = collection(
           db,
           "OrdenCompra",

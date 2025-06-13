@@ -10,12 +10,26 @@ export default function AddModeloInventario() {
   useEffect(() => {
     const fetchArticulos = async () => {
       const snap = await getDocs(collection(db, "Articulos"));
-      setArticulos(
-        snap.docs.map((d) => ({
+      const modeloSnap = await getDocs(collection(db, "ModeloInventario"));
+
+      // Modelos activos (sin baja lógica)
+      const modelosActivos = modeloSnap.docs
+        .map(d => d.data())
+        .filter(m => !m.fechahorabaja);
+
+      // Artículos activos y sin modelo de inventario asignado
+      const articulosFiltrados = snap.docs
+        .map(d => ({
           id: d.id,
           nombre: d.data().nombreArticulo,
+          baja: d.data().fechahorabaja || null,
         }))
-      );
+        .filter(art =>
+          !art.baja &&
+          !modelosActivos.some(m => m.codArticulo === art.id)
+        );
+
+      setArticulos(articulosFiltrados);
     };
     fetchArticulos();
   }, []);
@@ -36,7 +50,6 @@ export default function AddModeloInventario() {
     const proveedor = predeterminado.data();
     const L = parseInt(proveedor.DemoraEntrega);
     const S = parseFloat(proveedor.CargosPedido);
-    // Ahora se usan los nuevos campos personalizados:
     const sigma = proveedor.desviacionEstandar ? parseFloat(proveedor.desviacionEstandar) : 1;
     const T = proveedor.periodoRevision ? parseInt(proveedor.periodoRevision) : 7;
 

@@ -15,19 +15,30 @@ export default function ResumenInventario() {
       const modeloSnap = await getDocs(collection(db, "ModeloInventario"));
       const provSnap = await getDocs(collection(db, "Proveedor"));
 
-      const articulosData = artSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const modelosData = modeloSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // FILTRAR bajas lógicas
+      const articulosData = artSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((a) => !a.fechahorabaja);
 
+      const modelosData = modeloSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((m) => !m.fechahorabaja);
+
+      // FILTRAR proveedores dados de baja
       const nombres = {};
       provSnap.docs.forEach((d) => {
-        nombres[d.id] = d.data().nombreProveedor || d.id;
+        if (!d.data().fechaHoraBajaProveedor) {
+          nombres[d.id] = d.data().nombreProveedor || d.id;
+        }
       });
 
-      // Cargar proveedores por artículo
+      // Cargar proveedores por artículo (filtrando los dados de baja lógica)
       const provs = {};
       for (const a of artSnap.docs) {
         const sub = await getDocs(collection(db, "Articulos", a.id, "ProveedorArticulo"));
-        provs[a.id] = sub.docs.map(d => ({ id: d.id, ...d.data() }));
+        provs[a.id] = sub.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(p => !p.fechaHoraBajaProveedorArticulo);
       }
 
       // --- Calcular y actualizar modelos en lote, con LOGS ---

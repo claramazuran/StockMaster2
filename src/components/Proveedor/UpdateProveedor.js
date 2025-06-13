@@ -10,18 +10,33 @@ export default function UpdateProveedor() {
   useEffect(() => {
     const fetch = async () => {
       const snap = await getDocs(collection(db, "Proveedor"));
-      const lista = snap.docs.map(d => ({ id: d.id, nombre: d.data().nombreProveedor }));
+      const lista = snap.docs
+        .map(d => ({
+          id: d.id,
+          nombre: d.data().nombreProveedor,
+          baja: d.data().fechaHoraBajaProveedor || null,
+        }))
+        .filter(p => !p.baja);
       setProveedores(lista);
     };
     fetch();
   }, []);
 
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId) return setProveedor(null);
     const load = async () => {
       const ref = doc(db, "Proveedor", selectedId);
       const snap = await getDoc(ref);
-      if (snap.exists()) setProveedor(snap.data());
+      if (snap.exists()) {
+        const data = snap.data();
+        if (!data.fechaHoraBajaProveedor) {
+          setProveedor(data);
+        } else {
+          setProveedor(null);
+        }
+      } else {
+        setProveedor(null);
+      }
     };
     load();
   }, [selectedId]);
@@ -69,6 +84,12 @@ export default function UpdateProveedor() {
           />
           <button className="btn btn-warning">Actualizar</button>
         </form>
+      )}
+      {/* Mensaje si el proveedor está dado de baja */}
+      {selectedId && !proveedor && (
+        <div className="alert alert-danger mt-3">
+          Este proveedor fue dado de baja y no puede ser editado.
+        </div>
       )}
     </div>
   );
