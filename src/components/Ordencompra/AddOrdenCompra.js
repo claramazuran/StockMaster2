@@ -1,36 +1,61 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, addDoc, doc, setDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, setDoc } from "firebase/firestore";
 import db from "../../firebase";
 
 export default function AddOrdenConDetalle() {
   const [proveedores, setProveedores] = useState([]);
-  const [articulosDisponibles, setArticulosDisponibles] = useState([]);
+  const [articulosProveedor, setArticulosProveedor] = useState([]);
   const [proveedorId, setProveedorId] = useState("");
   const [items, setItems] = useState([]);
 
+  // Traer proveedores
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchProveedores = async () => {
       const provSnap = await getDocs(collection(db, "Proveedor"));
       setProveedores(provSnap.docs.map(doc => ({ id: doc.id, nombre: doc.data().nombreProveedor })));
-
-      const artSnap = await getDocs(collection(db, "Articulos"));
-      setArticulosDisponibles(artSnap.docs.map(d => ({ id: d.id, nombre: d.data().nombreArticulo })));
     };
-    fetchData();
+    fetchProveedores();
   }, []);
 
-  const verificarOCActiva = async (codArticulo) => {
+  // Cuando se elige proveedor, traer solo los artículos que ese proveedor tiene registrado
+  useEffect(() => {
+    const fetchArticulosDelProveedor = async () => {
+      if (!proveedorId) {
+        setArticulosProveedor([]);
+        return;
+      }
+      const artSnap = await getDocs(collection(db, "Articulos"));
+      const disponibles = [];
+      for (const d of artSnap.docs) {
+        const provArtSnap = await getDocs(collection(db, "Articulos", d.id, "ProveedorArticulo"));
+        if (provArtSnap.docs.some(docProv => docProv.data().codProveedor === proveedorId)) {
+          disponibles.push({ id: d.id, nombre: d.data().nombreArticulo });
+        }
+      }
+      setArticulosProveedor(disponibles);
+    };
+    fetchArticulosDelProveedor();
+    setItems([]); // Limpiar items al cambiar proveedor
+  }, [proveedorId]);
+
+  // FUNCION CLAVE: verificar si ya existe OC activa para ese artículo y proveedor
+  const existeOCActiva = async (codArticulo, proveedorId) => {
     const ocSnap = await getDocs(collection(db, "OrdenCompra"));
     for (const oc of ocSnap.docs) {
+      // Solo órdenes de este proveedor
+      if (oc.data().codProveedor !== proveedorId) continue;
+      // Buscar estado actual
       const estados = await getDocs(collection(db, "OrdenCompra", oc.id, "EstadoOrdenCompra"));
       const estadoActual = estados.docs.find(e => e.data().fechaHoraBajaEstadoCompra === null);
       if (!estadoActual) continue;
       const estado = estadoActual.data().nombreEstadoCompra;
-      if (["Pendiente", "Aprobada", "En Proceso"].includes(estado)) {
-        const detalles = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra"));
-        for (const det of detalles.docs) {
-          const articulos = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra", det.id, "articulos"));
-          if (articulos.docs.some(a => a.id === codArticulo)) return true;
+      if (!["Pendiente", "Enviada"].includes(estado)) continue;
+      // Buscar detalles y artículos
+      const detalles = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra"));
+      for (const det of detalles.docs) {
+        const articulos = await getDocs(collection(db, "OrdenCompra", oc.id, "DetalleOrdenCompra", det.id, "articulos"));
+        if (articulos.docs.some(a => a.id === codArticulo)) {
+          return true;
         }
       }
     }
@@ -57,11 +82,11 @@ export default function AddOrdenConDetalle() {
     e.preventDefault();
     if (!proveedorId || items.length === 0) return alert("Seleccioná un proveedor y agregá al menos un artículo");
 
-    // Validar existencia de OC activa por artículo
+    // Verificar existencia de OC activa por artículo y proveedor
     for (const item of items) {
-      const tieneOCActiva = await verificarOCActiva(item.codArticulo);
-      if (tieneOCActiva) {
-        return alert(`Ya existe una orden activa para el artículo ${item.codArticulo}`);
+      const yaExiste = await existeOCActiva(item.codArticulo, proveedorId);
+      if (yaExiste) {
+        return alert("Ya existe una Orden de Compra activa (pendiente o enviada) para este artículo con el proveedor seleccionado.");
       }
     }
 
@@ -117,7 +142,12 @@ export default function AddOrdenConDetalle() {
         ))}
       </select>
 
-      <button type="button" className="btn btn-outline-primary mb-3" onClick={handleAgregarItem}>
+      <button
+        type="button"
+        className="btn btn-outline-primary mb-3"
+        onClick={handleAgregarItem}
+        disabled={!proveedorId}
+      >
         ➕ Agregar Artículo
       </button>
 
@@ -131,7 +161,7 @@ export default function AddOrdenConDetalle() {
                 onChange={(e) => handleItemChange(i, "codArticulo", e.target.value)}
               >
                 <option value="">Seleccionar artículo</option>
-                {articulosDisponibles.map((a) => (
+                {articulosProveedor.map((a) => (
                   <option key={a.id} value={a.id}>{a.nombre}</option>
                 ))}
               </select>
@@ -155,7 +185,11 @@ export default function AddOrdenConDetalle() {
               />
             </div>
             <div className="col-md-2">
-              <button className="btn btn-outline-danger w-100" type="button" onClick={() => handleEliminarItem(i)}>
+              <button
+                className="btn btn-outline-danger w-100"
+                type="button"
+                onClick={() => handleEliminarItem(i)}
+              >
                 ➖
               </button>
             </div>
@@ -163,7 +197,9 @@ export default function AddOrdenConDetalle() {
         </div>
       ))}
 
-      <button className="btn btn-success" type="submit">Crear Orden con Detalle</button>
+      <button className="btn btn-success" type="submit" disabled={!proveedorId}>
+        Crear Orden con Detalle
+      </button>
     </form>
   );
 }

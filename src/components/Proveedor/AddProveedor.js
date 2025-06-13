@@ -20,7 +20,7 @@ export default function AddProveedor() {
     });
 
     alert("Proveedor creado. Ahora debes asociarle un artículo.");
-    navigate("/add-proveedor-articulo", { state: { idProveedor: docRef.id } });
+    navigate("/add-producto-proveedor", { state: { idProveedor: docRef.id } });
   };
 
   return (

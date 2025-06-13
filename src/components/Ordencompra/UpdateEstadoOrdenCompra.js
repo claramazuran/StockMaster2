@@ -16,31 +16,49 @@ export default function UpdateEstadoOrdenCompra() {
   const [selectedOrdenId, setSelectedOrdenId] = useState("");
   const [estadoActual, setEstadoActual] = useState(null);
   const [nuevoEstado, setNuevoEstado] = useState("");
+  const [cargando, setCargando] = useState(false);
 
   const estadosDisponibles = [
     "Pendiente",
-    "Aprobada",
-    "En Proceso",
-    "Completada",
+    "Enviada",
+    "Finalizada",
     "Cancelada",
   ];
 
+  // SOLO MUESTRA OC NO FINALIZADAS NI CANCELADAS
   useEffect(() => {
     const fetchOrdenes = async () => {
       const snap = await getDocs(collection(db, "OrdenCompra"));
-      setOrdenes(
-        snap.docs.map((d) => ({
-          id: d.id,
-          fecha: d.data().fechaHoraOrdenCompra?.toDate(),
-        }))
-      );
+      let ordenesValidas = [];
+      for (const d of snap.docs) {
+        const estadoRef = collection(
+          db,
+          "OrdenCompra",
+          d.id,
+          "EstadoOrdenCompra"
+        );
+        const q = query(estadoRef, where("fechaHoraBajaEstadoCompra", "==", null));
+        const estadoSnap = await getDocs(q);
+        if (!estadoSnap.empty) {
+          const actual = estadoSnap.docs[0].data().nombreEstadoCompra?.trim().toLowerCase();
+          // SOLO agrego si NO es finalizada ni cancelada
+          if (actual !== "finalizada" && actual !== "cancelada") {
+            ordenesValidas.push({
+              id: d.id,
+              fecha: d.data().fechaHoraOrdenCompra?.toDate(),
+              estado: estadoSnap.docs[0].data().nombreEstadoCompra,
+            });
+          }
+        }
+      }
+      setOrdenes(ordenesValidas);
     };
     fetchOrdenes();
   }, []);
 
   useEffect(() => {
     const fetchEstadoActual = async () => {
-      if (!selectedOrdenId) return;
+      if (!selectedOrdenId) return setEstadoActual(null);
       const estadoRef = collection(
         db,
         "OrdenCompra",
@@ -61,18 +79,17 @@ export default function UpdateEstadoOrdenCompra() {
 
   const handleActualizarEstado = async () => {
     if (!nuevoEstado || !estadoActual) return;
-
-    // Bloquear modificación si el estado actual es final
     if (
-      ["Enviada", "Finalizada", "Completada", "Cancelada"].includes(
-        estadoActual.nombreEstadoCompra
-      )
+      (estadoActual.nombreEstadoCompra === "Pendiente" && !["Enviada", "Cancelada"].includes(nuevoEstado)) ||
+      (estadoActual.nombreEstadoCompra === "Enviada" && nuevoEstado !== "Finalizada") ||
+      ["Finalizada", "Cancelada"].includes(estadoActual.nombreEstadoCompra)
     ) {
       return alert(
-        `La orden está en estado "${estadoActual.nombreEstadoCompra}" y no puede ser modificada`
+        `No se puede cambiar de "${estadoActual.nombreEstadoCompra}" a "${nuevoEstado}".`
       );
     }
 
+    setCargando(true);
     const fecha = new Date();
 
     // 1. Cerrar estado actual
@@ -101,6 +118,11 @@ export default function UpdateEstadoOrdenCompra() {
       fechaHoraBajaEstadoCompra: null,
     });
 
+    // 3. Si el nuevo estado es "Finalizada", actualizar inventario
+    if (nuevoEstado === "Finalizada") {
+      await actualizarInventarioAlFinalizar(selectedOrdenId);
+    }
+
     alert(`Estado actualizado a ${nuevoEstado}`);
     setEstadoActual({
       nombreEstadoCompra: nuevoEstado,
@@ -108,6 +130,69 @@ export default function UpdateEstadoOrdenCompra() {
       fechaHoraBajaEstadoCompra: null,
     });
     setNuevoEstado("");
+    setCargando(false);
+
+    // Actualizar lista de órdenes (opcional: recargar)
+    setOrdenes(ordenes.filter(o => o.id !== selectedOrdenId));
+    setSelectedOrdenId("");
+  };
+
+  // Actualiza inventario y chequea punto de pedido para artículos de la OC
+  const actualizarInventarioAlFinalizar = async (ordenId) => {
+    const detallesSnap = await getDocs(
+      collection(db, "OrdenCompra", ordenId, "DetalleOrdenCompra")
+    );
+    let mensajes = [];
+    for (const det of detallesSnap.docs) {
+      const articulosSnap = await getDocs(
+        collection(
+          db,
+          "OrdenCompra",
+          ordenId,
+          "DetalleOrdenCompra",
+          det.id,
+          "articulos"
+        )
+      );
+      for (const art of articulosSnap.docs) {
+        const { codArticulo, cantidad } = art.data();
+        const artDoc = await getDoc(doc(db, "Articulos", codArticulo));
+        if (!artDoc.exists()) continue;
+        const articulo = artDoc.data();
+        const nuevoStock = (articulo.stockActualArticulo || 0) + (cantidad || 0);
+        await updateDoc(doc(db, "Articulos", codArticulo), {
+          stockActualArticulo: nuevoStock,
+        });
+        const qModelo = query(
+          collection(db, "ModeloInventario"),
+          where("codArticulo", "==", codArticulo)
+        );
+        const modeloSnap = await getDocs(qModelo);
+        if (!modeloSnap.empty) {
+          const modelo = modeloSnap.docs[0].data();
+          if (
+            modelo.nombreModeloInventario === "Lote Fijo" &&
+            nuevoStock <= (modelo.puntoPedido || 0)
+          ) {
+            mensajes.push(
+              `⚠️ El artículo "${articulo.nombreArticulo}" quedó con stock (${nuevoStock}) por debajo o igual al Punto de Pedido (${modelo.puntoPedido}).`
+            );
+          }
+        }
+      }
+    }
+    if (mensajes.length) {
+      alert(mensajes.join("\n"));
+    }
+  };
+
+  const getEstadosValidos = () => {
+    if (!estadoActual) return [];
+    if (estadoActual.nombreEstadoCompra === "Pendiente")
+      return ["Enviada", "Cancelada"];
+    if (estadoActual.nombreEstadoCompra === "Enviada")
+      return ["Finalizada"];
+    return [];
   };
 
   return (
@@ -122,7 +207,7 @@ export default function UpdateEstadoOrdenCompra() {
         <option value="">Seleccionar Orden</option>
         {ordenes.map((o) => (
           <option key={o.id} value={o.id}>
-            Orden #{o.id} - {o.fecha?.toLocaleString()}
+            Orden #{o.id} - {o.fecha?.toLocaleString()} (Estado: {o.estado})
           </option>
         ))}
       </select>
@@ -140,19 +225,17 @@ export default function UpdateEstadoOrdenCompra() {
         disabled={!estadoActual}
       >
         <option value="">Seleccionar nuevo estado</option>
-        {estadosDisponibles
-          .filter((e) => e !== estadoActual?.nombreEstadoCompra)
-          .map((estado) => (
-            <option key={estado} value={estado}>
-              {estado}
-            </option>
-          ))}
+        {getEstadosValidos().map((estado) => (
+          <option key={estado} value={estado}>
+            {estado}
+          </option>
+        ))}
       </select>
 
       <button
         className="btn btn-warning"
         onClick={handleActualizarEstado}
-        disabled={!nuevoEstado}
+        disabled={!nuevoEstado || cargando}
       >
         Actualizar Estado
       </button>

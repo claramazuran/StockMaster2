@@ -7,20 +7,16 @@ export default function AddModeloInventario() {
   const [modelo, setModelo] = useState("Lote Fijo");
   const [stockSeguridad, setStockSeguridad] = useState("");
   const [articuloId, setArticuloId] = useState("");
-  const [loteOptimo, setLoteOptimo] = useState("");
-  const [puntoPedido, setPuntoPedido] = useState("");
-  const [inventarioMaximo, setInventarioMaximo] = useState("");
 
   useEffect(() => {
     const fetchArticulos = async () => {
       const snap = await getDocs(collection(db, "Articulos"));
-setArticulos(
-  snap.docs.map((d) => ({
-    id: d.id,
-    nombre: d.data().nombreArticulo, // ✅ USAR nombreArticulo
-  }))
-);
-
+      setArticulos(
+        snap.docs.map((d) => ({
+          id: d.id,
+          nombre: d.data().nombreArticulo,
+        }))
+      );
     };
     fetchArticulos();
   }, []);
@@ -29,27 +25,47 @@ setArticulos(
     e.preventDefault();
     if (!modelo || !articuloId || !stockSeguridad) return alert("Completa los campos");
 
-    const data = {
+    // Buscar proveedor predeterminado
+    const proveedoresSnap = await getDocs(collection(db, "Articulos", articuloId, "ProveedorArticulo"));
+    const predeterminado = proveedoresSnap.docs.find((doc) => doc.data().esProveedorPredeterminado === true);
+    if (!predeterminado) return alert("El artículo no tiene proveedor predeterminado");
+
+    const proveedor = predeterminado.data();
+    const L = parseInt(proveedor.DemoraEntrega);
+    const S = parseFloat(proveedor.CargosPedido);
+
+    // Obtener datos del artículo
+    const artSnap = await getDocs(collection(db, "Articulos"));
+    const articulo = artSnap.docs.find((d) => d.id === articuloId)?.data();
+    const D = parseInt(articulo.demandaArticulo);
+
+    let data = {
       nombreModeloInventario: modelo,
       stockDeSeguridad: parseInt(stockSeguridad),
       codArticulo: articuloId,
     };
 
     if (modelo === "Lote Fijo") {
-      data.loteOptimo = parseInt(loteOptimo);
-      data.puntoPedido = parseInt(puntoPedido);
+      const loteOptimo = Math.round(Math.sqrt((2 * D * S) / articulo.costoAlmacenamientoArticulo));
+      const puntoPedido = Math.round((D / 30) * L + parseInt(stockSeguridad));
+
+      data = {
+        ...data,
+        loteOptimo,
+        puntoPedido,
+      };
     } else if (modelo === "Inventario Fijo") {
-      data.inventarioMaximo = parseInt(inventarioMaximo);
+      const inventarioMaximo = Math.round((D / 30) * L + parseInt(stockSeguridad));
+      data = {
+        ...data,
+        inventarioMaximo,
+      };
     }
 
     await addDoc(collection(db, "ModeloInventario"), data);
-
     alert("Modelo de inventario agregado");
     setStockSeguridad("");
     setArticuloId("");
-    setLoteOptimo("");
-    setPuntoPedido("");
-    setInventarioMaximo("");
   };
 
   return (
@@ -85,35 +101,6 @@ setArticulos(
         value={stockSeguridad}
         onChange={(e) => setStockSeguridad(e.target.value)}
       />
-
-      {modelo === "Lote Fijo" && (
-        <>
-          <input
-            className="form-control mb-2"
-            placeholder="Lote óptimo"
-            type="number"
-            value={loteOptimo}
-            onChange={(e) => setLoteOptimo(e.target.value)}
-          />
-          <input
-            className="form-control mb-3"
-            placeholder="Punto de pedido"
-            type="number"
-            value={puntoPedido}
-            onChange={(e) => setPuntoPedido(e.target.value)}
-          />
-        </>
-      )}
-
-      {modelo === "Inventario Fijo" && (
-        <input
-          className="form-control mb-3"
-          placeholder="Inventario máximo"
-          type="number"
-          value={inventarioMaximo}
-          onChange={(e) => setInventarioMaximo(e.target.value)}
-        />
-      )}
 
       <button className="btn btn-success">Guardar</button>
     </form>

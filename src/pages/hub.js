@@ -64,7 +64,6 @@ export default function Hub() {
                   <button className="btn btn-primary" onClick={() => navigate("/add-producto-proveedor")}>Agregar Tipo</button>
                   <button className="btn btn-light border border-dark border-1" onClick={() => navigate("/update-producto-proveedor")}>Editar Tipo</button>
                   <button className="btn btn-danger" onClick={() => navigate("/delete-producto-proveedor")}>Eliminar Tipo</button>
-                  <button className="btn btn-info" onClick={() => navigate("/ver-producto-proveedor")}>Ver Tipos y Stock</button>
                 </div>
               </div>
             </div>

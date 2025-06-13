@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  getDoc,
+  updateDoc,
+  query,
+  where,
+} from "firebase/firestore";
 import db from "../../firebase";
 
 export default function UpdateModeloInventario() {
@@ -23,14 +31,38 @@ export default function UpdateModeloInventario() {
     const load = async () => {
       const ref = doc(db, "ModeloInventario", selectedId);
       const snap = await getDoc(ref);
-      if (snap.exists()) setData(snap.data());
+      if (!snap.exists()) return;
+      const modelo = snap.data();
+
+      const artSnap = await getDoc(doc(db, "Articulos", modelo.codArticulo));
+      const artData = artSnap.data();
+
+      const provSnap = await getDocs(collection(db, "Articulos", modelo.codArticulo, "ProveedorArticulo"));
+      const pred = provSnap.docs.find(d => d.data().esProveedorPredeterminado);
+      const proveedor = pred?.data();
+
+      if (modelo.nombreModeloInventario === "Lote Fijo") {
+        if (!proveedor) return alert("No hay proveedor predeterminado");
+        const d = artData.demandaArticulo;
+        const cp = artData.costoPedidoArticulo;
+        const ca = artData.costoAlmacenamientoArticulo;
+        const demora = proveedor.DemoraEntrega;
+        const lote = Math.sqrt((2 * d * cp) / ca);
+        const puntoPedido = demora * (d / 30);
+        modelo.loteOptimo = Math.round(lote);
+        modelo.puntoPedido = Math.round(puntoPedido);
+      } else if (modelo.nombreModeloInventario === "Inventario Fijo") {
+        if (!proveedor) return alert("No hay proveedor predeterminado");
+        const d = artData.demandaArticulo;
+        const demora = proveedor.DemoraEntrega;
+        const max = (d / 30) * demora + 10;
+        modelo.inventarioMaximo = Math.round(max);
+      }
+
+      setData(modelo);
     };
     load();
   }, [selectedId]);
-
-  const handleChange = (campo, valor) => {
-    setData({ ...data, [campo]: valor });
-  };
 
   const handleUpdate = async () => {
     await updateDoc(doc(db, "ModeloInventario", selectedId), {
@@ -40,7 +72,7 @@ export default function UpdateModeloInventario() {
       puntoPedido: data.puntoPedido ? parseInt(data.puntoPedido) : undefined,
       inventarioMaximo: data.inventarioMaximo ? parseInt(data.inventarioMaximo) : undefined,
     });
-    alert("Modelo actualizado");
+    alert("Modelo actualizado correctamente");
   };
 
   return (
@@ -60,18 +92,18 @@ export default function UpdateModeloInventario() {
         <>
           <input className="form-control mb-2" type="number" placeholder="Stock de seguridad"
             value={data.stockDeSeguridad}
-            onChange={(e) => handleChange("stockDeSeguridad", e.target.value)}
+            onChange={(e) => setData({ ...data, stockDeSeguridad: e.target.value })}
           />
 
           {data.nombreModeloInventario === "Lote Fijo" && (
             <>
               <input className="form-control mb-2" type="number" placeholder="Lote óptimo"
                 value={data.loteOptimo || ""}
-                onChange={(e) => handleChange("loteOptimo", e.target.value)}
+                readOnly
               />
               <input className="form-control mb-3" type="number" placeholder="Punto de pedido"
                 value={data.puntoPedido || ""}
-                onChange={(e) => handleChange("puntoPedido", e.target.value)}
+                readOnly
               />
             </>
           )}
@@ -79,7 +111,7 @@ export default function UpdateModeloInventario() {
           {data.nombreModeloInventario === "Inventario Fijo" && (
             <input className="form-control mb-3" type="number" placeholder="Inventario máximo"
               value={data.inventarioMaximo || ""}
-              onChange={(e) => handleChange("inventarioMaximo", e.target.value)}
+              readOnly
             />
           )}
 

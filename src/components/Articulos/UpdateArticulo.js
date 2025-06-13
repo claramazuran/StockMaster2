@@ -13,7 +13,7 @@ export default function UpdateArticulo() {
       const snapshot = await getDocs(collection(db, "Articulos"));
       const lista = snapshot.docs.map(doc => ({
         id: doc.id,
-        nombre: doc.data().descripcionnombre,
+        nombre: doc.data().nombreArticulo,
       }));
       setArticulos(lista);
     };
@@ -66,34 +66,76 @@ export default function UpdateArticulo() {
 
       {articulo && (
         <form onSubmit={handleUpdate}>
-                    <input className="form-control mb-2" placeholder="nombre"
-            value={articulo.nombreArticulo}
-            onChange={(e) => setArticulo({ ...articulo, nombreArticulo: e.target.value })}
-          />
-          <input className="form-control mb-2" placeholder="Descripción"
-            value={articulo.descripcionArticulo}
-            onChange={(e) => setArticulo({ ...articulo, descripcionArticulo: e.target.value })}
-          />
-          <input className="form-control mb-2" placeholder="Costo almacenamiento"
-            type="number" value={articulo.costoAlmacenamientoArticulo}
-            onChange={(e) => setArticulo({ ...articulo, costoAlmacenamientoArticulo: e.target.value })}
-          />
-          <input className="form-control mb-2" placeholder="Costo compra"
-            type="number" value={articulo.costoCompra}
-            onChange={(e) => setArticulo({ ...articulo, costoCompra: e.target.value })}
-          />
-          <input className="form-control mb-2" placeholder="Costo pedido"
-            type="number" value={articulo.costoPedidoArticulo}
-            onChange={(e) => setArticulo({ ...articulo, costoPedidoArticulo: e.target.value })}
-          />
-          <input className="form-control mb-2" placeholder="Demanda"
-            type="number" value={articulo.demandaArticulo}
-            onChange={(e) => setArticulo({ ...articulo, demandaArticulo: e.target.value })}
-          />
-          <input className="form-control mb-2" placeholder="Stock actual"
-            type="number" value={articulo.stockActualArticulo}
-            onChange={(e) => setArticulo({ ...articulo, stockActualArticulo: e.target.value })}
-          />
+          <div className="mb-3 row">
+            <label className="col-sm-3 col-form-label">Nombre</label>
+            <div className="col-sm-9">
+              <input className="form-control"
+                value={articulo.nombreArticulo}
+                onChange={(e) => setArticulo({ ...articulo, nombreArticulo: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="mb-3 row">
+            <label className="col-sm-3 col-form-label">Descripción</label>
+            <div className="col-sm-9">
+              <input className="form-control"
+                value={articulo.descripcionArticulo}
+                onChange={(e) => setArticulo({ ...articulo, descripcionArticulo: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="mb-3 row">
+            <label className="col-sm-3 col-form-label">Costo almacenamiento</label>
+            <div className="col-sm-9">
+              <input className="form-control" type="number"
+                value={articulo.costoAlmacenamientoArticulo}
+                onChange={(e) => setArticulo({ ...articulo, costoAlmacenamientoArticulo: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="mb-3 row">
+            <label className="col-sm-3 col-form-label">Costo compra</label>
+            <div className="col-sm-9">
+              <input className="form-control" type="number"
+                value={articulo.costoCompra}
+                onChange={(e) => setArticulo({ ...articulo, costoCompra: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="mb-3 row">
+            <label className="col-sm-3 col-form-label">Costo pedido</label>
+            <div className="col-sm-9">
+              <input className="form-control" type="number"
+                value={articulo.costoPedidoArticulo}
+                onChange={(e) => setArticulo({ ...articulo, costoPedidoArticulo: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="mb-3 row">
+            <label className="col-sm-3 col-form-label">Demanda</label>
+            <div className="col-sm-9">
+              <input className="form-control" type="number"
+                value={articulo.demandaArticulo}
+                onChange={(e) => setArticulo({ ...articulo, demandaArticulo: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="mb-3 row">
+            <label className="col-sm-3 col-form-label">Stock actual</label>
+            <div className="col-sm-9">
+              <input className="form-control" type="number"
+                value={articulo.stockActualArticulo}
+                onChange={(e) => setArticulo({ ...articulo, stockActualArticulo: e.target.value })}
+              />
+            </div>
+          </div>
+
           <button className="btn btn-warning">Actualizar</button>
         </form>
       )}
