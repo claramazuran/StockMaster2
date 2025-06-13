@@ -100,10 +100,23 @@ export default function AddVenta() {
     if (modeloNombre === "Lote Fijo" && stock < modelo.puntoPedido) {
       const tieneOC = await verificarOrdenActiva(codArticulo);
       if (!tieneOC) {
+        // Buscar proveedor predeterminado activo
+        const provArtSnap = await getDocs(collection(db, "Articulos", codArticulo, "ProveedorArticulo"));
+        const provPred = provArtSnap.docs.find(
+          p => p.data().esProveedorPredeterminado && !p.data().fechaHoraBajaProveedorArticulo
+        );
+        if (!provPred) {
+          alert("No hay proveedor predeterminado activo para este artículo");
+          return;
+        }
+        const proveedor = provPred.data();
+        const codProveedor = proveedor.codProveedor;
+        const precioUnitario = proveedor.PrecioUnitario || 0;
+
         const fecha = new Date();
         const ordenRef = await addDoc(collection(db, "OrdenCompra"), {
           fechaHoraOrdenCompra: fecha,
-          codProveedor: "AUTOGENERADA",
+          codProveedor: codProveedor, // proveedor correcto
         });
 
         await setDoc(
@@ -120,7 +133,7 @@ export default function AddVenta() {
           {
             fechaHoraAlta: fecha,
             fechaHoraBaja: null,
-            precioTotal: 0,
+            precioTotal: precioUnitario * (modelo.loteOptimo || 1), // calcula el total del detalle
           }
         );
 
@@ -136,13 +149,13 @@ export default function AddVenta() {
           ),
           {
             codArticulo,
-            precioArticulo: 0,
+            precioArticulo: precioUnitario,
             cantidad: modelo.loteOptimo || 1,
           }
         );
 
         // Mensaje de log en consola
-        console.log(`⚙️ OC autogenerada para ${codArticulo}`);
+        console.log(`⚙️ OC autogenerada para ${codArticulo} con proveedor ${codProveedor}, precio unitario ${precioUnitario}`);
       }
     }
   };
