@@ -19,7 +19,7 @@ export default function AddOrdenPorArticulo() {
       setProveedores(provMap);
 
       // Traer artículos
-      const artSnap = await getDocs(collection(db, "Articulos"));
+      const artSnap = await getDocs(collection(db, "Articulo"));
       const articulos = [];
 
       for (const artDoc of artSnap.docs) {
@@ -27,9 +27,9 @@ export default function AddOrdenPorArticulo() {
         if (art.fechahorabaja) continue;
 
         // Buscar proveedor predeterminado activo
-        const provArtSnap = await getDocs(collection(db, "Articulos", artDoc.id, "ProveedorArticulo"));
+        const provArtSnap = await getDocs(collection(db, "Articulo", artDoc.id, "ArticuloProveedor"));
         const pred = provArtSnap.docs.find(
-          p => p.data().esProveedorPredeterminado && !p.data().fechaHoraBajaProveedorArticulo
+          p => p.data().esProveedorPredeterminado && !p.data().fechaHoraBajaArticuloProveedor
         );
         if (!pred) continue;
 
@@ -134,7 +134,7 @@ export default function AddOrdenPorArticulo() {
       });
 
       // Artículo comprado
-      const articulosRef = collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra", detalleRef.id, "articulos");
+      const articulosRef = collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra", detalleRef.id, "Articulo");
       await setDoc(doc(articulosRef, articulo.id), {
         codArticulo: articulo.id,
         cantidad: parseInt(item.cantidad),

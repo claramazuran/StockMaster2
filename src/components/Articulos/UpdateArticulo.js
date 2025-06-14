@@ -11,7 +11,7 @@ export default function UpdateArticulo() {
   // Obtener lista de artículos activos (sin baja lógica)
   useEffect(() => {
     const fetchArticulos = async () => {
-      const snapshot = await getDocs(collection(db, "Articulos"));
+      const snapshot = await getDocs(collection(db, "Articulo"));
       const lista = snapshot.docs
         .map(doc => ({
           id: doc.id,
@@ -31,7 +31,7 @@ export default function UpdateArticulo() {
       return;
     }
     const cargarArticulo = async () => {
-      const ref = doc(db, "Articulos", selectedId);
+      const ref = doc(db, "Articulo", selectedId);
       const snap = await getDoc(ref);
       if (snap.exists() && !snap.data().fechahorabaja) {
         setArticulo(snap.data());
@@ -44,7 +44,7 @@ export default function UpdateArticulo() {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    const ref = doc(db, "Articulos", selectedId);
+    const ref = doc(db, "Articulo", selectedId);
     await updateDoc(ref, {
       ...articulo,
       costoAlmacenamientoArticulo: parseFloat(articulo.costoAlmacenamientoArticulo),

@@ -13,7 +13,7 @@ export default function AddArticulo() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    await addDoc(collection(db, "Articulos"), {
+    await addDoc(collection(db, "Articulo"), {
       nombreArticulo: nombre,
       descripcionArticulo: descripcion,
       costoAlmacenamientoArticulo: parseFloat(costoAlmacenamiento),
@@ -34,7 +34,7 @@ export default function AddArticulo() {
   };
 
   return (
-    
+
     //formulario para agregar un nuevo artículo
     <form onSubmit={handleSubmit} className="container my-3">
       <h4 className="text-center">➕ Agregar Artículo</h4>

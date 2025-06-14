@@ -10,7 +10,7 @@ export default function AjusteInventario() {
 
   useEffect(() => {
     const fetchArticulos = async () => {
-      const snap = await getDocs(collection(db, "Articulos"));
+      const snap = await getDocs(collection(db, "Articulo"));
       setArticulos(
         snap.docs
           .map((d) => ({
@@ -28,7 +28,7 @@ export default function AjusteInventario() {
     setSelectedId(id);
     setEditando(false);
     if (id) {
-      const ref = doc(db, "Articulos", id);
+      const ref = doc(db, "Articulo", id);
       const snap = await getDoc(ref);
       if (snap.exists()) {
         setStockActual(snap.data().stockActualArticulo);
@@ -40,7 +40,7 @@ export default function AjusteInventario() {
 
   const handleGuardar = async () => {
     if (selectedId === "" || stockActual === null) return alert("Seleccioná un artículo");
-    await updateDoc(doc(db, "Articulos", selectedId), {
+    await updateDoc(doc(db, "Articulo", selectedId), {
       stockActualArticulo: parseInt(stockActual),
     });
     alert("Stock actualizado correctamente");

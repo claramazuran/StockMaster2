@@ -24,7 +24,7 @@ export default function AddArticuloProveedor() {
     const fetchData = async () => {
       
       // Solo artículos activos y existentes
-      const artSnap = await getDocs(collection(db, "Articulos"));
+      const artSnap = await getDocs(collection(db, "Articulo"));
       setArticulos(
         artSnap.docs
           .map((d) => ({
@@ -55,7 +55,7 @@ export default function AddArticuloProveedor() {
     //revisa que se haya seleccionado un articulo y un proveedor
     if (!articuloId || !proveedorId) return alert("Seleccioná artículo y proveedor");
 
-    const ref = doc(db, "Articulos", articuloId, "ArticuloProveedor", proveedorId);
+    const ref = doc(db, "Articulo", articuloId, "ArticuloProveedor", proveedorId);
     await setDoc(ref, {
       demoraEntrega: parseInt(demoraEntrega),
       esProveedorPredeterminado: esPredeterminado,

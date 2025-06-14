@@ -17,7 +17,7 @@ export default function AddVenta() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const snap = await getDocs(collection(db, "Articulos"));
+      const snap = await getDocs(collection(db, "Articulo"));
       // Solo artículos activos (sin fechahorabaja)
       const data = snap.docs
         .map((d) => ({
@@ -76,7 +76,7 @@ export default function AddVenta() {
               oc.id,
               "DetalleOrdenCompra",
               det.id,
-              "articulos"
+              "Articulo"
             )
           );
           if (arts.docs.some((a) => a.id === codArticulo)) return true;
@@ -101,9 +101,9 @@ export default function AddVenta() {
       const tieneOC = await verificarOrdenActiva(codArticulo);
       if (!tieneOC) {
         // Buscar proveedor predeterminado activo
-        const provArtSnap = await getDocs(collection(db, "Articulos", codArticulo, "ProveedorArticulo"));
+        const provArtSnap = await getDocs(collection(db, "Articulo", codArticulo, "ArticuloProveedor"));
         const provPred = provArtSnap.docs.find(
-          p => p.data().esProveedorPredeterminado && !p.data().fechaHoraBajaProveedorArticulo
+          p => p.data().esProveedorPredeterminado && !p.data().fechaHoraBajaArticuloProveedor
         );
         if (!provPred) {
           alert("No hay proveedor predeterminado activo para este artículo");
@@ -144,7 +144,7 @@ export default function AddVenta() {
             ordenRef.id,
             "DetalleOrdenCompra",
             detalleRef.id,
-            "articulos",
+            "Articulo",
             codArticulo
           ),
           {
@@ -201,7 +201,7 @@ export default function AddVenta() {
       });
 
       // Actualizar stock
-      const artRef = doc(db, "Articulos", item.codArticulo);
+      const artRef = doc(db, "Articulo", item.codArticulo);
       const nuevoStock =
         articulos.find((a) => a.id === item.codArticulo).stock -
         parseInt(item.cantidadVendidaArticulo);

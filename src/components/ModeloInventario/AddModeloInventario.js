@@ -11,7 +11,7 @@ export default function AddModeloInventario() {
 
   useEffect(() => {
     const fetchArticulos = async () => {
-      const snap = await getDocs(collection(db, "Articulos"));
+      const snap = await getDocs(collection(db, "Articulo"));
       const modeloSnap = await getDocs(collection(db, "ModeloInventario"));
 
       // Modelos activos (sin baja lógica)
@@ -42,7 +42,7 @@ export default function AddModeloInventario() {
 
     // Buscar proveedor predeterminado
     const proveedoresSnap = await getDocs(
-      collection(db, "Articulos", articuloId, "ProveedorArticulo")
+      collection(db, "Articulo", articuloId, "ArticuloProveedor")
     );
     const predeterminado = proveedoresSnap.docs.find(
       (doc) => doc.data().esProveedorPredeterminado === true
@@ -56,7 +56,7 @@ export default function AddModeloInventario() {
     const T = proveedor.periodoRevision ? parseInt(proveedor.periodoRevision) : 7;
 
     // Obtener datos del artículo
-    const artSnap = await getDocs(collection(db, "Articulos"));
+    const artSnap = await getDocs(collection(db, "Articulo"));
     const articulo = artSnap.docs.find((d) => d.id === articuloId)?.data();
     const D = parseInt(articulo.demandaArticulo);
 

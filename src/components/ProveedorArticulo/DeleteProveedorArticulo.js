@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import db from "../../firebase";
 
-export default function DeleteProveedorArticulo() {
+export default function DeleteArticuloProveedor() {
   const [articulos, setArticulos] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [articuloId, setArticuloId] = useState("");
@@ -19,7 +19,7 @@ export default function DeleteProveedorArticulo() {
 
   useEffect(() => {
     const fetch = async () => {
-      const artSnap = await getDocs(collection(db, "Articulos"));
+      const artSnap = await getDocs(collection(db, "Articulo"));
       const provSnap = await getDocs(collection(db, "Proveedor"));
       setArticulos(artSnap.docs.map(d => ({ id: d.id, nombre: d.data().nombreArticulo })));
       setProveedores(provSnap.docs.map(d => ({ id: d.id, nombre: d.data().nombreProveedor })));
@@ -34,7 +34,7 @@ export default function DeleteProveedorArticulo() {
     const confirm = window.confirm("¿Dar de baja esta relación proveedor-artículo?");
     if (!confirm) return;
 
-    const docRef = doc(db, "Articulos", articuloId, "ProveedorArticulo", proveedorId);
+    const docRef = doc(db, "Articulo", articuloId, "ArticuloProveedor", proveedorId);
     const snap = await getDoc(docRef);
 
     if (!snap.exists()) {
@@ -42,7 +42,7 @@ export default function DeleteProveedorArticulo() {
     }
 
     const data = snap.data();
-    if (data.fechaHoraBajaProveedorArticulo) {
+    if (data.fechaHoraBajaArticuloProveedor) {
       return alert("Ya se encuentra dada de baja.");
     }
 
@@ -71,7 +71,7 @@ export default function DeleteProveedorArticulo() {
     }
 
     await updateDoc(docRef, {
-      fechaHoraBajaProveedorArticulo: Timestamp.now(),
+      fechaHoraBajaArticuloProveedor: Timestamp.now(),
     });
 
     alert("Relación dada de baja correctamente");

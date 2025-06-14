@@ -10,7 +10,7 @@ export default function DeleteModeloInventario() {
   useEffect(() => {
     const fetchData = async () => {
       const snap = await getDocs(collection(db, "ModeloInventario"));
-      const art = await getDocs(collection(db, "Articulos"));
+      const art = await getDocs(collection(db, "Articulo"));
 
       setModelos(
         snap.docs

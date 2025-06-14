@@ -17,7 +17,7 @@ export default function UpdateModeloInventario() {
   useEffect(() => {
     const fetchAll = async () => {
       const snap = await getDocs(collection(db, "ModeloInventario"));
-      const art = await getDocs(collection(db, "Articulos"));
+      const art = await getDocs(collection(db, "Articulo"));
 
       // Artículos activos
       const articulosActivos = art.docs
@@ -57,14 +57,14 @@ export default function UpdateModeloInventario() {
       const modelo = snap.data();
 
       // Verificar que el artículo asociado también esté activo
-      const artSnap = await getDoc(doc(db, "Articulos", modelo.codArticulo));
+      const artSnap = await getDoc(doc(db, "Articulo", modelo.codArticulo));
       const artData = artSnap.data();
       if (!artData || artData.fechahorabaja) {
         setData(null);
         return;
       }
 
-      const provSnap = await getDocs(collection(db, "Articulos", modelo.codArticulo, "ProveedorArticulo"));
+      const provSnap = await getDocs(collection(db, "Articulo", modelo.codArticulo, "ArticuloProveedor"));
       const pred = provSnap.docs.find(d => d.data().esProveedorPredeterminado);
       const proveedor = pred?.data();
 

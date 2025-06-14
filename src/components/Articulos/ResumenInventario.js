@@ -11,7 +11,7 @@ export default function ResumenInventario() {
 
   useEffect(() => {
     const fetchDataAndCalculate = async () => {
-      const artSnap = await getDocs(collection(db, "Articulos"));
+      const artSnap = await getDocs(collection(db, "Articulo"));
       const modeloSnap = await getDocs(collection(db, "ModeloInventario"));
       const provSnap = await getDocs(collection(db, "Proveedor"));
 
@@ -35,10 +35,10 @@ export default function ResumenInventario() {
       // Cargar proveedores por artículo (filtrando los dados de baja lógica)
       const provs = {};
       for (const a of artSnap.docs) {
-        const sub = await getDocs(collection(db, "Articulos", a.id, "ProveedorArticulo"));
+        const sub = await getDocs(collection(db, "Articulo", a.id, "ArticuloProveedor"));
         provs[a.id] = sub.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .filter(p => !p.fechaHoraBajaProveedorArticulo);
+          .filter(p => !p.fechaHoraBajaArticuloProveedor);
       }
 
       // --- Calcular y actualizar modelos en lote, con LOGS ---

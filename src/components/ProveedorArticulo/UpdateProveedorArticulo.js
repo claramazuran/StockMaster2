@@ -14,7 +14,7 @@ export default function UpdateArticuloProveedor() {
     const fetch = async () => {
       
       // Artículos activos
-      const artSnap = await getDocs(collection(db, "Articulos"));
+      const artSnap = await getDocs(collection(db, "Articulo"));
       setArticulos(
         artSnap.docs
           .map(d => ({
@@ -45,7 +45,7 @@ export default function UpdateArticuloProveedor() {
       setData(null);
       setBajaRelacion(false);
       if (!articuloId || !proveedorId) return;
-      const ref = doc(db, "Articulos", articuloId, "ArticuloProveedor", proveedorId);
+      const ref = doc(db, "Articulo", articuloId, "ArticuloProveedor", proveedorId);
       const snap = await getDoc(ref);
       if (snap.exists()) {
         const d = snap.data();
@@ -68,7 +68,7 @@ export default function UpdateArticuloProveedor() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     
-    const ref = doc(db, "Articulos", articuloId, "ArticuloProveedor", proveedorId);
+    const ref = doc(db, "Articulo", articuloId, "ArticuloProveedor", proveedorId);
     await updateDoc(ref, {
       costoCompra: parseFloat(data.costoCompra),
       costoPedidoArticulo: parseFloat(data.costoPedidoArticulo),
@@ -207,7 +207,7 @@ export default function UpdateArticuloProveedor() {
                 //validacion si se quiere marcar o desmarcar el proveedor predeterminado
                 if (checked) {
                   
-                  const proveedoresRef = collection(db, "Articulos", articuloId, "ArticuloProveedor");
+                  const proveedoresRef = collection(db, "Articulo", articuloId, "ArticuloProveedor");
                   const q = query(proveedoresRef, where("esProveedorPredeterminado", "==", true));
                   const snapshot = await getDocs(q);
                   const yaExisteOtro = snapshot.docs.some(docSnap => docSnap.id !== proveedorId);
@@ -219,7 +219,7 @@ export default function UpdateArticuloProveedor() {
                   }
                 } else {
                     // Si se desmarca el proveedor predeterminado, verificar que no quede sin ninguno
-                    const proveedoresRef = collection(db, "Articulos", articuloId, "ArticuloProveedor");
+                    const proveedoresRef = collection(db, "Articulo", articuloId, "ArticuloProveedor");
                     const q = query(proveedoresRef, where("esProveedorPredeterminado", "==", true));
                     const snapshot = await getDocs(q);
                     if (snapshot.empty) {
@@ -228,7 +228,7 @@ export default function UpdateArticuloProveedor() {
                       return;
                     }
                 }
-                
+
                 setData({ ...data, esProveedorPredeterminado: checked });
               }}/>
 
