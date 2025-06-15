@@ -15,10 +15,8 @@ export default function AddArticuloProveedor() {
   const [precioUnitario, setPrecioUnitario] = useState("");
   const [demoraEntrega, setDemoraEntrega] = useState("");
   const [esPredeterminado, setEsPredeterminado] = useState(false);
-  const [costoCompra, setCostoCompra] = useState("");
   const [costoPedido, setCostoPedido] = useState("");
-  const [desviacion, setDesviacion] = useState("1");
-  const [periodoRevision, setPeriodoRevision] = useState("7");
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,6 +53,24 @@ export default function AddArticuloProveedor() {
     //revisa que se haya seleccionado un articulo y un proveedor
     if (!articuloId || !proveedorId) return alert("Seleccioná artículo y proveedor");
 
+    // Verificar que no haya más de un proveedor predeterminado para el mismo artículo
+    if (esPredeterminado) {
+      const proveedoresSnap = await getDocs(collection(db, "Articulo", articuloId, "ArticuloProveedor"));
+      const yaPredeterminado = proveedoresSnap.docs.find(doc => doc.data().esProveedorPredeterminado === true);
+      if (yaPredeterminado) {
+        alert("Ya existe un proveedor predeterminado para este artículo. Solo puede haber uno.");
+        return;
+      }
+    }
+
+    // Obtener la demanda del artículo seleccionado
+    const articuloSnap = await getDocs(collection(db, "Articulo"));
+    const articulo = articuloSnap.docs.find(d => d.id === articuloId)?.data();
+    const demanda = articulo?.demandaArticulo ? parseFloat(articulo.demandaArticulo) : 0;
+    // Calcular costo de compra
+    const costoCompra = parseFloat(precioUnitario) * demanda;
+
+    //guardado del articulo-proveedor
     const ref = doc(db, "Articulo", articuloId, "ArticuloProveedor", proveedorId);
     await setDoc(ref, {
       demoraEntrega: parseInt(demoraEntrega),
@@ -63,10 +79,8 @@ export default function AddArticuloProveedor() {
       fechaHoraBajaArticuloProveedor: null,
       precioUnitario: parseFloat(precioUnitario),
       codProveedor: proveedorId,
-      costoCompra: parseFloat(costoCompra),
+      costoCompra: costoCompra,
       costoPedidoArticulo: parseFloat(costoPedido),
-      desviacionEstandar: parseFloat(desviacion),
-      periodoRevision: parseInt(periodoRevision),
     });
 
     alert("Articulo-Proveedor agregado correctamente");
@@ -79,10 +93,7 @@ export default function AddArticuloProveedor() {
 
     setPrecioUnitario("");
     setDemoraEntrega("");
-    setCostoCompra("");
     setCostoPedido("");
-    setDesviacion("1");
-    setPeriodoRevision("7");
     setEsPredeterminado(false);
   };
 
@@ -116,7 +127,6 @@ export default function AddArticuloProveedor() {
 
         <div className="form-text mb-3">
           <text>Seleccione un Proveedor</text>
-          {!proveedorIdInicial && (
             <select
               className="form-select mb-3"
               value={proveedorId}
@@ -127,7 +137,6 @@ export default function AddArticuloProveedor() {
                 <option key={p.id} value={p.id}>{p.nombre}</option>
               ))}
             </select>
-          )}
         </div>
 
         <div className="form-text mb-3">
@@ -164,19 +173,6 @@ export default function AddArticuloProveedor() {
             }}/>
         </div>
 
-        <div className="form-text mb-3">
-            <text>Costo Compra</text>
-            <input className="form-control mb-2"
-              type="number" value={costoCompra} onChange={(e) => {
-                const valor = e.target.value;
-                if (valor < 0) {
-                  alert("El costo de compra no puede ser negativo");
-                  setCostoCompra("");
-                } else {
-                  setCostoCompra(e.target.value)}
-                }}/>
-          </div>
-
           <div className="form-text mb-3">
             <text>Costo Pedido</text>
             <input className="form-control mb-2"
@@ -192,43 +188,6 @@ export default function AddArticuloProveedor() {
                 }}/>
           </div>
           
-        <div className="form-text mb-3">
-          <text>Desviacion Estandar</text>
-          <input
-            type="number"
-            step="any"
-            className="form-control mb-2"
-            placeholder="Desviación estándar de la demanda"
-            value={desviacion}
-            onChange={(e) => {
-              const valor = e.target.value;
-              if (valor < 0) {
-                alert("La desviación estándar no puede ser negativa");
-                setDesviacion("");
-              } else {
-                setDesviacion(e.target.value)
-              } 
-            }}/>
-        </div>
-        
-        <div className="form-text mb-3"> 
-          <text>Periodo de Revision en dias</text>
-          <input
-            type="number"
-            className="form-control mb-2"
-            placeholder="Período de revisión (días)"
-            value={periodoRevision}
-            onChange={(e) => {
-              const valor = e.target.value;
-              if (valor < 0) {
-                alert("El período de revisión no puede ser negativo");
-                setPeriodoRevision("");
-              } else {
-                setPeriodoRevision(e.target.value)
-              }
-            }}/>
-        </div>
-
         <div className="form-check mb-3">
           <input
             className="form-check-input"

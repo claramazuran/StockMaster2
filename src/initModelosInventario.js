@@ -1,25 +1,27 @@
-//CAMBIO X LO DE LOS MODELOS, ARCHIVO NUEVO PARA INICIALIZAR MODELOS DE INVENTARIO
+//ARCHIVO NUEVO PARA INICIALIZAR LOS TIPOS DE MODELOS DE INVENTARIO
 import { collection, doc, setDoc, getDocs } from "firebase/firestore";
 import db from "./firebase";
 
-const modelos = [
+const tipoModelos = [
     {
         id: "modelo1",
-        nombre: "Modelo de Revisión Continua",
-        descripcion: "Modelo clásico de inventario de revisión continua (Q,r)."
+        nombre: "Modelo de Lote Fijo",
+        fechaHoraAltaTipoModelo: new Date(),
+        fechaHoraBajaTipoModelo: null,
     },
     {
         id: "modelo2",
-        nombre: "Modelo de Revisión Periódica",
-        descripcion: "Modelo de inventario de revisión periódica (P,S)."
+        nombre: "Modelo de Periodo Fijo",
+        fechaHoraAltaTipoModelo: new Date(),
+        fechaHoraBajaTipoModelo: null,
     }
 ];
 
-export async function initModelosInventario() {
-    const modelosRef = collection(db, "ModeloInventario");
+export async function initTipoModelosInventario() {
+    const modelosRef = collection(db, "TipoModeloInventario");
     const snapshot = await getDocs(modelosRef);
     const existentes = snapshot.docs.map(doc => doc.id);
-    for (const modelo of modelos) {
+    for (const modelo of tipoModelos) {
         if (!existentes.includes(modelo.id)) {
         await setDoc(doc(modelosRef, modelo.id), modelo);
         }

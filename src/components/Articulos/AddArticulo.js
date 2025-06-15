@@ -17,8 +17,6 @@ export default function AddArticulo() {
       nombreArticulo: nombre,
       descripcionArticulo: descripcion,
       costoAlmacenamientoArticulo: parseFloat(costoAlmacenamiento),
-      //costoCompra: parseFloat(costoCompra),
-      //costoPedidoArticulo: parseFloat(costoPedido),
       demandaArticulo: parseInt(demanda),
       stockActualArticulo: parseInt(stock),
     });
@@ -69,7 +67,7 @@ export default function AddArticulo() {
         </div>
 
         <div className="form-text mb-3">
-          <text>Demanda Articulo</text>
+          <text>Demanda Diaria Articulo</text>
           <input className="form-control mb-2"
             type="number" value={demanda} onChange={(e) => {
               const valor = e.target.value;

@@ -12,6 +12,7 @@ export default function AddProveedor() {
     e.preventDefault();
     if (!nombre) return alert("Nombre es requerido");
 
+    //se guarda el proveedor en la base de datos
     const docRef = await addDoc(collection(db, "Proveedor"), {
       nombreProveedor: nombre,
       nroTelefonoProveedor: telefono,

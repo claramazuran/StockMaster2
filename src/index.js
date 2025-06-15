@@ -4,7 +4,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import 'bootstrap/dist/css/bootstrap.min.css';
-//CAMBIO X LO DE LOS MODELOSimport { initModelosInventario } from './initModelosInventario';
+import { initTipoModelosInventario } from './initModelosInventario';
 
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -14,7 +14,7 @@ root.render(
   </React.StrictMode>
 );
 
-//CAMBIO X LO DE LOS MODELOSinitModelosInventario();
+initTipoModelosInventario();
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

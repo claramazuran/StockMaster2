@@ -8,21 +8,25 @@ export default function ResumenInventario() {
   const [proveedores, setProveedores] = useState({});
   const [nombresProveedores, setNombresProveedores] = useState({});
   const [loading, setLoading] = useState(true);
+  const [tipoModelos, setTipoModelos] = useState([]);
 
   useEffect(() => {
     const fetchDataAndCalculate = async () => {
       const artSnap = await getDocs(collection(db, "Articulo"));
       const modeloSnap = await getDocs(collection(db, "ModeloInventario"));
       const provSnap = await getDocs(collection(db, "Proveedor"));
+      const tipoModeloSnap = await getDocs(collection(db, "TipoModeloInventario"));
 
-      // FILTRAR bajas lógicas
+      setTipoModelos(tipoModeloSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((tm) => !tm.fechaHoraBajaTipoModeloInventario));
+
       const articulosData = artSnap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter((a) => !a.fechahorabaja);
 
       const modelosData = modeloSnap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((m) => !m.fechahorabaja);
 
       // FILTRAR proveedores dados de baja
       const nombres = {};
@@ -43,7 +47,7 @@ export default function ResumenInventario() {
 
       // --- Calcular y actualizar modelos en lote, con LOGS ---
       for (const a of articulosData) {
-        const m = modelosData.find((m) => m.codArticulo === a.id);
+        const m = modelosData.find((m) => m.articuloId == a.id);
         const listaProv = provs[a.id] || [];
         const pred = listaProv.find(p => p.esProveedorPredeterminado);
 
@@ -51,78 +55,12 @@ export default function ResumenInventario() {
           console.log(`No hay modelo inventario para el artículo ${a.nombreArticulo}`);
           continue;
         }
+
         if (!pred) {
           console.log(`No hay proveedor predeterminado para ${a.nombreArticulo}`);
           continue;
         }
-
-        // NUEVO: obtener sigma y T del proveedor predeterminado
-        const Z = 1.65;
-        const sigma = pred.desviacionEstandar ? parseFloat(pred.desviacionEstandar) : 1;
-        const T = pred.periodoRevision ? parseInt(pred.periodoRevision) : 7;
-        const demora = parseInt(pred.DemoraEntrega) || 0;
-        const stockDeSeguridad = Math.ceil(Z * sigma * Math.sqrt(T + demora));
-
-        // Actualizar si es distinto al que está en Firestore
-        let necesitaUpdate = false;
-        if (m.stockDeSeguridad !== stockDeSeguridad) {
-          console.log(
-            `Artículo: ${a.nombreArticulo} | StockSeguridad actual: ${m.stockDeSeguridad}, Calculado: ${stockDeSeguridad}`
-          );
-          m.stockDeSeguridad = stockDeSeguridad;
-          necesitaUpdate = true;
-        }
-
-        // LOTE FIJO
-        if (m.nombreModeloInventario === "Lote Fijo") {
-          const d = a.demandaArticulo;
-          const cp = a.costoPedidoArticulo;
-          const ca = a.costoAlmacenamientoArticulo;
-          const lote = Math.sqrt((2 * d * cp) / ca);
-          const punto = demora * (d / 30) + stockDeSeguridad;
-
-          const loteOptimo = Math.round(lote);
-          const puntoPedido = Math.round(punto);
-
-          if (m.loteOptimo !== loteOptimo || m.puntoPedido !== puntoPedido) {
-            console.log(`Artículo: ${a.nombreArticulo}`);
-            console.log(`   Lote óptimo actual: ${m.loteOptimo}, Calculado: ${loteOptimo}`);
-            console.log(`   Punto pedido actual: ${m.puntoPedido}, Calculado: ${puntoPedido}`);
-            necesitaUpdate = true;
-            m.loteOptimo = loteOptimo;
-            m.puntoPedido = puntoPedido;
-          }
-        }
-        // PERÍODO FIJO
-        else if (m.nombreModeloInventario === "Periodo Fijo") {
-          const max = Math.round((a.demandaArticulo / 30) * demora + stockDeSeguridad);
-          if (m.inventarioMaximo !== max) {
-            console.log(
-              `Inventario Máximo actual: ${m.inventarioMaximo}, Calculado: ${max}`
-            );
-            necesitaUpdate = true;
-            m.inventarioMaximo = max;
-          }
-        }
-
-        if (necesitaUpdate) {
-          try {
-            await updateDoc(doc(db, "ModeloInventario", m.id), {
-              stockDeSeguridad,
-              loteOptimo: m.loteOptimo ?? undefined,
-              puntoPedido: m.puntoPedido ?? undefined,
-              inventarioMaximo: m.inventarioMaximo ?? undefined,
-            });
-            console.log(
-              `   Actualizado Firestore! stockDeSeguridad: ${stockDeSeguridad}, loteOptimo: ${m.loteOptimo}, puntoPedido: ${m.puntoPedido}, inventarioMaximo: ${m.inventarioMaximo}`
-            );
-          } catch (e) {
-            console.error(`Error actualizando modelo para ${a.nombreArticulo}:`, e);
-          }
-        } else {
-          console.log("   No se requiere actualización, valores iguales.");
-        }
-      }
+      } 
 
       setArticulos(articulosData);
       setModelos(modelosData);
@@ -134,12 +72,14 @@ export default function ResumenInventario() {
     fetchDataAndCalculate();
   }, []);
 
-  const getModeloDeArticulo = (id) => modelos.find((m) => m.codArticulo === id);
+  const getModeloDeArticulo = (id) => modelos.find((m) => m.articuloId == id);
+  
+  const getTipoModelo = (id) => tipoModelos.find((tm) => tm.id === id);
 
   const tieneOrdenPendiente = (articuloId) => false; // placeholder
 
-  const calcularCGI = (a, m) => {
-    if (!a || !m || m.nombreModeloInventario !== "Lote Fijo" || !m.loteOptimo) return null;
+  const calcularCGI = (a, m, tm) => {
+    if (!a || !m || !tm ||tm.nombre !== "Modelo de Lote Fijo" || !m.loteOptimo) return null;
     const { demandaArticulo, costoPedidoArticulo, costoAlmacenamientoArticulo } = a;
     const lote = m.loteOptimo;
     const cgi = (costoPedidoArticulo * demandaArticulo) / lote + (lote / 2) * costoAlmacenamientoArticulo;
@@ -149,7 +89,7 @@ export default function ResumenInventario() {
   const getRowClass = (a, m) => {
     if (!m) return "";
     if (a.stockActualArticulo <= m.puntoPedido && !tieneOrdenPendiente(a.id)) return "table-danger";
-    if (a.stockActualArticulo <= m.stockDeSeguridad) return "table-warning";
+    if (a.stockActualArticulo <= m.stockSeguridad) return "table-warning";
     return "";
   };
 
@@ -168,9 +108,9 @@ export default function ResumenInventario() {
               <th>Modelo</th>
               <th>Lote óptimo</th>
               <th>Punto pedido</th>
-              <th>Inventario máx</th>
               <th>Stock Seguridad</th>
               <th>CGI</th>
+              <th>Periodo Revision en Dias</th>
               <th>Proveedores</th>
               <th>Estado</th>
             </tr>
@@ -178,39 +118,39 @@ export default function ResumenInventario() {
           <tbody>
             {articulos.map((a) => {
               const m = getModeloDeArticulo(a.id);
+              const tm = getTipoModelo(m?.tipoModeloId);
               if (!m) return null;
               const rowClass = getRowClass(a, m);
               const listaProv = proveedores[a.id] || [];
-let estado;
 
-if (a.stockActualArticulo <= (m?.stockDeSeguridad ?? 0)) {
-  estado = "🟠 Faltante"; // Crítico, siempre avisar
-} else if (
-  a.stockActualArticulo <= (m?.puntoPedido ?? 0)
-  && !tieneOrdenPendiente(a.id)
-) {
-  estado = "🔴 Reponer"; // Solo si NO hay OC pendiente
-} else {
-  estado = "✅ OK";
-}
+              let estado;
 
-
+              if (a.stockActualArticulo <= (m?.stockSeguridad ?? 0)) {
+                estado = "🟠 Faltante";
+              } else if (
+                a.stockActualArticulo == (m?.puntoPedido ?? 0)
+                && !tieneOrdenPendiente(a.id)
+              ) {
+                estado = "🔴 Reponer";
+              } else {
+                estado = "✅ OK";
+              }
               return (
                 <tr key={a.id} className={rowClass}>
                   <td>{a.nombreArticulo}</td>
                   <td>{a.stockActualArticulo}</td>
                   <td>{a.demandaArticulo}</td>
-                  <td>{m?.nombreModeloInventario || "-"}</td>
-                  <td>{m?.loteOptimo ?? "-"}</td>
+                  <td>{tm?.nombre || "-"}</td>
+                  <td>{m?.cantidadAPedirOptima ?? "-"}</td>
                   <td>{m?.puntoPedido ?? "-"}</td>
-                  <td>{m?.inventarioMaximo ?? "-"}</td>
-                  <td>{m?.stockDeSeguridad ?? "-"}</td>
-                  <td>{calcularCGI(a, m) ?? "-"}</td>
+                  <td>{m?.stockSeguridad ?? "-"}</td>
+                  <td>{calcularCGI(a, m, tm) ?? "-"}</td>
+                  <td>{m?.periodoRevision ?? "-"}</td>
                   <td>
                     {listaProv.length > 0
                       ? listaProv.map((p, i) => (
                           <div key={i}>
-                            {nombresProveedores[p.codProveedor] || p.codProveedor} ({p.PrecioUnitario}) {p.esProveedorPredeterminado ? "⭐" : ""}
+                            {nombresProveedores[p.codProveedor] || p.codProveedor} ({p.precioUnitario}) {p.esProveedorPredeterminado ? "⭐" : ""}
                           </div>
                         ))
                       : "-"}
