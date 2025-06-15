@@ -8,7 +8,7 @@ export default function DeleteArticulo() {
 
   useEffect(() => {
     const fetchArticulos = async () => {
-      const snapshot = await getDocs(collection(db, "Articulos"));
+      const snapshot = await getDocs(collection(db, "Articulo"));
       const lista = snapshot.docs
         .map(doc => ({
           id: doc.id,
@@ -34,7 +34,7 @@ export default function DeleteArticulo() {
     for (const orden of ordenes.docs) {
       const detalles = await getDocs(collection(db, "OrdenCompra", orden.id, "DetalleOrdenCompra"));
       for (const detalle of detalles.docs) {
-        const articulosDetalle = await getDocs(collection(db, "OrdenCompra", orden.id, "DetalleOrdenCompra", detalle.id, "articulos"));
+        const articulosDetalle = await getDocs(collection(db, "OrdenCompra", orden.id, "DetalleOrdenCompra", detalle.id, "Articulo"));
         for (const ad of articulosDetalle.docs) {
           if (ad.id === selectedId) return alert("No se puede dar de baja un artículo con orden de compra pendiente o enviada");
         }
@@ -44,7 +44,7 @@ export default function DeleteArticulo() {
     const confirm = window.confirm("¿Estás seguro de dar de baja este artículo?");
     if (!confirm) return;
 
-    await updateDoc(doc(db, "Articulos", selectedId), {
+    await updateDoc(doc(db, "Articulo", selectedId), {
       fechahorabaja: Timestamp.now()
     });
 
@@ -55,14 +55,19 @@ export default function DeleteArticulo() {
 
   return (
     <div className="container my-4">
-      <h4>🗑️ Dar de baja Artículo</h4>
+      <h4 className="text-center mb-5">🗑️ Dar de baja Artículo</h4>
+
+      <text className="form-text mb-3">Seleccione un Articulo</text>
       <select className="form-select mb-3" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
         <option value="">Seleccionar artículo</option>
         {articulos.map((a) => (
           <option key={a.id} value={a.id}>{a.nombre}</option>
         ))}
       </select>
-      <button className="btn btn-danger" onClick={handleDelete} disabled={!selectedId}>Dar de baja</button>
+
+      <div className="text-center mb-4 mt-5">
+        <button className="btn btn-danger px-4 py-2" onClick={handleDelete} disabled={!selectedId}>Dar de baja</button>
+      </div>
     </div>
   );
 }
