@@ -128,7 +128,7 @@ export default function ResumenInventario() {
               if (a.stockActualArticulo <= (m?.stockSeguridad ?? 0)) {
                 estado = "🟠 Faltante";
               } else if (
-                a.stockActualArticulo == (m?.puntoPedido ?? 0)
+                a.stockActualArticulo <= (m?.puntoPedido ?? 0)
                 && !tieneOrdenPendiente(a.id)
               ) {
                 estado = "🔴 Reponer";

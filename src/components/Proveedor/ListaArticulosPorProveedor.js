@@ -28,7 +28,7 @@ export default function ListaArticulosPorProveedor() {
         resultado[prov.id] = [];
 
         for (const art of articulos) {
-          const sub = doc(db, "Articulo", art.id, "ProveedorArticulo", prov.id);
+          const sub = doc(db, "Articulo", art.id, "ArticuloProveedor", prov.id);
           const snap = await getDoc(sub);
 
           // Relación proveedor-artículo activa

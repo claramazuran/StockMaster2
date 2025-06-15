@@ -113,7 +113,6 @@ export default function Hub() {
                 <div className="d-grid gap-2">
                   <button className="btn btn-primary" onClick={() => navigate("/add-modelo-inventario")}>Agregar Modelo</button>
                   <button className="btn btn-light border border-dark border-1" onClick={() => navigate("/update-modelo-inventario")}>Editar Modelo</button>
-                  <button className="btn btn-danger" onClick={() => navigate("/delete-modelo-inventario")}>Eliminar Modelo</button>
                 </div>
               </div>
             </div>

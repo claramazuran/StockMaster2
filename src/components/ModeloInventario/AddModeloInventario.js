@@ -50,7 +50,7 @@ export default function AddModeloInventario() {
       return;
     }
 
-    if( modelosInventario.some(modelo => modelo.articuloId === articuloSeleccionado.id )) {   
+    if( modelosInventario.some(modelo => modelo.articuloId == articuloSeleccionado.id )) {   
       alert('El artículo ya tiene un modelo de inventario asociado');
       // Limpiar formulario
       setArticuloSeleccionado('');

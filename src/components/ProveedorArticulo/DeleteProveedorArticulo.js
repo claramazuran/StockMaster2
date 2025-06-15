@@ -46,6 +46,11 @@ export default function DeleteArticuloProveedor() {
       return alert("Ya se encuentra dada de baja.");
     }
 
+    //verificacion de que no sea proveedor predeterminado
+    if(data.esProveedorPredeterminado) {
+      return alert("No se puede dar de baja un proveedor predeterminado. Debe cambiarlo primero.");
+    }
+
     // 🔍 Verificar si existe OC con ese proveedor y artículo en estado Pendiente o Enviada
     // Buscamos todas las OC del proveedor
     const ocSnap = await getDocs(
@@ -72,6 +77,7 @@ export default function DeleteArticuloProveedor() {
 
     await updateDoc(docRef, {
       fechaHoraBajaArticuloProveedor: Timestamp.now(),
+      esProveedorPredeterminado: false, // Aseguramos que no quede como predeterminado
     });
 
     alert("Relación dada de baja correctamente");

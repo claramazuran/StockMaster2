@@ -31,10 +31,10 @@ export default function DeleteProveedor() {
 
   const validarBaja = async (idProveedor) => {
     //Verificar si es proveedor predeterminado en algún artículo
-    const artSnap = await getDocs(collection(db, "Articulos"));
+    const artSnap = await getDocs(collection(db, "Articulo"));
     for (const art of artSnap.docs) {
       const subSnap = await getDocs(
-        collection(db, "Articulos", art.id, "ProveedorArticulo")
+        collection(db, "Articulo", art.id, "ArticuloProveedor")
       );
       const algunoPredeterminado = subSnap.docs.some(
         d =>
