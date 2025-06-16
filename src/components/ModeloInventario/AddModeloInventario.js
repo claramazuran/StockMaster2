@@ -50,6 +50,25 @@ export default function AddModeloInventario() {
     return predeterminado.data().costoPedidoArticulo;
   }
 
+  // Función para obtener el objeto ArticuloProveedor predeterminado
+  async function obtenerProveedorPredeterminado(articuloId) {
+    const proveedoresSnap = await getDocs(
+      collection(db, "Articulo", articuloId, "ArticuloProveedor")
+    );
+
+    const predeterminadoDoc = proveedoresSnap.docs.find(
+      (doc) => doc.data().esProveedorPredeterminado === true
+    );
+
+    if (!predeterminadoDoc) {
+      alert("El artículo no tiene proveedor predeterminado");
+      return null;
+    }
+
+    return { id: predeterminadoDoc.id, ...predeterminadoDoc.data() };
+}
+
+
   // Funcion para guardar el modelo de inventario
   const handleSave = async (e) => {
     e.preventDefault();
@@ -57,13 +76,16 @@ export default function AddModeloInventario() {
       alert('Debe seleccionar un artículo y un modelo');
       return;
     }
-    const articuloProveedor = await obtenerCostoPedidoProveedorPredeterminado(articuloSeleccionado.id);
+
+    // Obtener costo pedido del proveedor predeterminado
+    const articuloProveedor = await obtenerProveedorPredeterminado(articuloSeleccionado.id);
+    console.log(`Este el el articuloProveedor predeterminado ${articuloProveedor}`);
     if (!articuloProveedor) {
       alert('El artículo no tiene proveedor predeterminado');
       return;
     }
 
-     // Verificar si el artículo ya tiene un modelo de inventario asociado
+    // Verificar si el artículo ya tiene un modelo de inventario asociado
     if( modelosInventario.some(modelo => modelo.articuloId === articuloSeleccionado.id )) {  
       alert('El artículo ya tiene un modelo de inventario asociado');
       // Limpiar formulario
@@ -78,7 +100,7 @@ export default function AddModeloInventario() {
     
     await addDoc(collection(db, 'ModeloInventario'), modeloInventarioParaGuardar);
     alert('Modelo de Inventario agregado correctamente');
-    setFormData(['',''])
+    setFormData({ desviacion: '', periodoRevision: '' });
 
     // Limpiar formulario
       setArticuloSeleccionado('');
@@ -98,9 +120,11 @@ export default function AddModeloInventario() {
             setArticuloSeleccionado(art || '');
           }}>
             <option value="">Seleccione un artículo</option>
-            {articulos.map(a => (
-              <option key={a.id} value={a.id}>{a.nombreArticulo}</option>
-            ))}
+            {articulos
+              .filter(a => !modelosInventario.some(m => m.articuloId === a.id))
+              .map(a => (
+                <option key={a.id} value={a.id}>{a.nombreArticulo}</option>
+              ))}
           </select>
         </div>
 
@@ -125,17 +149,17 @@ export default function AddModeloInventario() {
                 type="number"
                 className="form-control mb-2"
                 value={formData.desviacion}
-                onChange={e => setFormData({ ...formData, desviacion: e.target.value })}
+                onChange={e => setFormData({ ...formData, desviacion: parseInt(e.target.value) })}
               />
             </div>
             {tiposModelo.find(t => t.id === tipoSeleccionado.id)?.nombre === 'Modelo de Periodo Fijo' && (
               <div className="mb-4">
                 <label>Periodo de revisión en días</label>
                 <input
-                  type="integer"
+                  type="number"
                   className="form-control mb-2"
                   value={formData.periodoRevision}
-                  onChange={e => setFormData({ ...formData, periodoRevision: e.target.value })}
+                  onChange={e => setFormData({ ...formData, periodoRevision: parseInt(e.target.value) })}
                 />
               </div>
             )}

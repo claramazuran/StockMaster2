@@ -36,8 +36,6 @@ export default function AddArticulo() {
     setNombre("");
     setDescripcion("");
     setCostoAlmacenamiento("");
-    //setCostoCompra("");
-    //setCostoPedido("");
     setDemanda("");
     setStock("");
   };
@@ -66,13 +64,13 @@ export default function AddArticulo() {
           <text>Costo Almacenamiento</text>
           <input className="form-control mb-2"
             type="number" value={costoAlmacenamiento} onChange={(e) => {
-              const valor = e.target.value;
+              const valor = parseFloat(e.target.value);
               //logica para que el valor no pueda ser negativo
               if (valor <= 0) {
                 alert("El costo de almacenamiento no puede ser negativo");
                 setCostoAlmacenamiento("");
               } else {
-                setCostoAlmacenamiento(e.target.value)
+                setCostoAlmacenamiento(valor)
               }
               }} />
         </div>
@@ -81,13 +79,13 @@ export default function AddArticulo() {
           <text>Demanda Diaria Articulo</text>
           <input className="form-control mb-2"
             type="number" value={demanda} onChange={(e) => {
-              const valor = e.target.value;
+              const valor = parseInt(e.target.value);
               //logica para que el valor no pueda ser negativo
               if (valor < 0) {
                 alert("La demanda no puede ser negativa");
                 setDemanda("");
               } else {
-                setDemanda(e.target.value)
+                setDemanda(valor)
               }
             }}/>
 
@@ -97,13 +95,13 @@ export default function AddArticulo() {
           <text>Stock Actual</text>
           <input className="form-control mb-2"
             type="number" value={stock} onChange={(e) => {
-              const valor = e.target.value;
+              const valor = parseInt(e.target.value);
               //logica para que el valor no pueda ser negativo
               if (valor < 0) {
                 alert("El stock no puede ser negativo");
                 setStock("");
               } else {
-                setStock(e.target.value)
+                setStock(valor)
               }
               }} />
         </div>
