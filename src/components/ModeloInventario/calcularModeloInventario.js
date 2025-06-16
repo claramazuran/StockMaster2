@@ -3,7 +3,7 @@ export default function CalcularModeloInventario (articuloSeleccionado, tipoSele
     
     //si estoy dando de alta un modelo de inventario
     if (articuloSeleccionado && tipoSeleccionado && formData && articuloProveedor) {
-    
+        // Si es un modelo de lote fijo
         if(tipoSeleccionado.nombre === "Modelo de Lote Fijo") {
             const cantidadAPedirOptima = Math.ceil(Math.sqrt((2 * articuloSeleccionado.demandaArticulo * articuloProveedor.costoPedidoArticulo)/articuloSeleccionado.costoAlmacenamientoArticulo));
             const stockSeguridad = Math.ceil(Z * formData.desviacion);
@@ -18,9 +18,10 @@ export default function CalcularModeloInventario (articuloSeleccionado, tipoSele
                 desviacionEstandar: formData.desviacion,
                 stockSeguridad: stockSeguridad,
                 };
-            
-            return newModelo;
 
+            return newModelo;
+        
+        // Si es un modelo de periodo fijo
         } else if(tipoSeleccionado.nombre === "Modelo de Periodo Fijo") {
             const stockSeguridad = Math.ceil(Z * formData.desviacion * (parseFloat(formData.periodoRevision) + articuloProveedor.demoraEntrega));
             const cantidadAPedirOptima = Math.ceil(articuloSeleccionado.demandaArticulo * (parseFloat(formData.periodoRevision) + articuloProveedor.demoraEntrega) + stockSeguridad - (articuloSeleccionado.stockActualArticulo || 0));
@@ -37,6 +38,7 @@ export default function CalcularModeloInventario (articuloSeleccionado, tipoSele
             return newModelo;
         }
     }
+
     //si estoy actualizando un modelo de inventario
     if (articuloSeleccionado && tipoSeleccionado && data && articuloProveedor) {
         if(tipoSeleccionado.nombre === "Modelo de Lote Fijo") {

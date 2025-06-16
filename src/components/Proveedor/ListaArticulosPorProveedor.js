@@ -20,7 +20,7 @@ export default function ListaArticulosPorProveedor() {
       const articulosSnap = await getDocs(collection(db, "Articulo"));
       const articulos = articulosSnap.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((a) => !a.fechahorabaja);
+        .filter((a) => !a.fechaHoraBajaArticulo);
 
       const resultado = {};
 

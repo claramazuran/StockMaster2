@@ -5,6 +5,7 @@ import CalcularModeloInventario from "./calcularModeloInventario";
 
 
 export default function AddModeloInventario() {
+  // Lista de artículos
   const [articulos, setArticulos] = useState([]);
   const [tiposModelo, setTiposModelo] = useState([]);
   const [articuloSeleccionado, setArticuloSeleccionado] = useState('');
@@ -15,12 +16,19 @@ export default function AddModeloInventario() {
     periodoRevision: ''
   });
 
+  // Cargar datos de articulos, tipos de modelos y modelos
   useEffect(() => {
     const fetchData = async () => {
       const articulosSnapshot = await getDocs(collection(db, 'Articulo'));
       const tiposSnapshot = await getDocs(collection(db, 'TipoModeloInventario'));
       const modelosSnapshot = await getDocs(collection(db, 'ModeloInventario'));
-      setArticulos(articulosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setArticulos(articulosSnapshot.docs
+        .map(doc => ({ 
+          id: doc.id, 
+          baja: doc.data().fechaHoraBajaArticulo || null,
+          ...doc.data() }))
+        .filter(a => !a.baja)
+        );
       setTiposModelo(tiposSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setModelosInventario(modelosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     };
@@ -35,9 +43,14 @@ export default function AddModeloInventario() {
     const predeterminado = proveedoresSnap.docs.find(
       (doc) => doc.data().esProveedorPredeterminado === true
     );
-    
-    return predeterminado.data();
+    if (!predeterminado) {
+      alert("El artículo no tiene proveedor predeterminado");
+      return null;
+    }
+    return predeterminado.data().costoPedidoArticulo;
   }
+
+  // Funcion para guardar el modelo de inventario
   const handleSave = async (e) => {
     e.preventDefault();
     if (!articuloSeleccionado || !tipoSeleccionado) {
@@ -50,7 +63,8 @@ export default function AddModeloInventario() {
       return;
     }
 
-    if( modelosInventario.some(modelo => modelo.articuloId == articuloSeleccionado.id )) {   
+     // Verificar si el artículo ya tiene un modelo de inventario asociado
+    if( modelosInventario.some(modelo => modelo.articuloId === articuloSeleccionado.id )) {  
       alert('El artículo ya tiene un modelo de inventario asociado');
       // Limpiar formulario
       setArticuloSeleccionado('');
@@ -59,6 +73,7 @@ export default function AddModeloInventario() {
       return;
     }
     
+    // Calcular el modelo de inventario
     const modeloInventarioParaGuardar = CalcularModeloInventario(articuloSeleccionado, tipoSeleccionado, formData, articuloProveedor);
     
     await addDoc(collection(db, 'ModeloInventario'), modeloInventarioParaGuardar);

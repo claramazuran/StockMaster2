@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import db from "../../firebase";
 
 export default function ResumenInventario() {
@@ -23,7 +23,7 @@ export default function ResumenInventario() {
 
       const articulosData = artSnap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((a) => !a.fechahorabaja);
+        .filter((a) => !a.fechaHoraBajaArticulo);
 
       const modelosData = modeloSnap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
@@ -47,7 +47,7 @@ export default function ResumenInventario() {
 
       // --- Calcular y actualizar modelos en lote, con LOGS ---
       for (const a of articulosData) {
-        const m = modelosData.find((m) => m.articuloId == a.id);
+        const m = modelosData.find((m) => m.articuloId === a.id);
         const listaProv = provs[a.id] || [];
         const pred = listaProv.find(p => p.esProveedorPredeterminado);
 
@@ -72,17 +72,29 @@ export default function ResumenInventario() {
     fetchDataAndCalculate();
   }, []);
 
-  const getModeloDeArticulo = (id) => modelos.find((m) => m.articuloId == id);
+  const getModeloDeArticulo = (id) => modelos.find((m) => m.articuloId === id);
   
   const getTipoModelo = (id) => tipoModelos.find((tm) => tm.id === id);
 
   const tieneOrdenPendiente = (articuloId) => false; // placeholder
+  
+  // Devuelve el proveedor-artículo predeterminado de un artículo
+  const getProveedorPredeterminado = (articuloId) => {
+    const listaProv = proveedores[articuloId] || [];
+    return listaProv.find(p => p.esProveedorPredeterminado) || null;
+  };
 
-  const calcularCGI = (a, m, tm) => {
-    if (!a || !m || !tm ||tm.nombre !== "Modelo de Lote Fijo" || !m.loteOptimo) return null;
-    const { demandaArticulo, costoPedidoArticulo, costoAlmacenamientoArticulo } = a;
-    const lote = m.loteOptimo;
-    const cgi = (costoPedidoArticulo * demandaArticulo) / lote + (lote / 2) * costoAlmacenamientoArticulo;
+  const calcularCGI = (a, m, tm, proveedorPredeterminado) => {
+    console.log({
+      costoPedidoArticulo: a.costoPedidoArticulo,
+      demandaArticulo: a.demandaArticulo,
+      cantidadAPedirOptima: m.cantidadAPedirOptima,
+      costoAlmacenamientoArticulo: a.costoAlmacenamientoArticulo
+});
+    if (!a || !m || !tm ||tm.nombre !== "Modelo de Lote Fijo" || !m.cantidadAPedirOptima || !proveedorPredeterminado) return null;
+    const { demandaArticulo, costoAlmacenamientoArticulo } = a;
+    const lote = m.cantidadAPedirOptima;
+    const cgi = (proveedorPredeterminado.costoPedidoArticulo * demandaArticulo) / lote + (lote / 2) * costoAlmacenamientoArticulo;
     return cgi.toFixed(2);
   };
 
@@ -119,6 +131,7 @@ export default function ResumenInventario() {
             {articulos.map((a) => {
               const m = getModeloDeArticulo(a.id);
               const tm = getTipoModelo(m?.tipoModeloId);
+              const proveedorPredeterminado = getProveedorPredeterminado(a.id);
               if (!m) return null;
               const rowClass = getRowClass(a, m);
               const listaProv = proveedores[a.id] || [];
@@ -144,7 +157,7 @@ export default function ResumenInventario() {
                   <td>{m?.cantidadAPedirOptima ?? "-"}</td>
                   <td>{m?.puntoPedido ?? "-"}</td>
                   <td>{m?.stockSeguridad ?? "-"}</td>
-                  <td>{calcularCGI(a, m, tm) ?? "-"}</td>
+                  <td>{calcularCGI(a, m, tm, proveedorPredeterminado) ?? "-"}</td>
                   <td>{m?.periodoRevision ?? "-"}</td>
                   <td>
                     {listaProv.length > 0

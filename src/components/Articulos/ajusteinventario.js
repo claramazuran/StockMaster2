@@ -3,27 +3,27 @@ import { collection, getDocs, doc, updateDoc, getDoc } from "firebase/firestore"
 import db from "../../firebase";
 
 export default function AjusteInventario() {
+  // Lista de artículos
   const [articulos, setArticulos] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [stockActual, setStockActual] = useState(null);
   const [editando, setEditando] = useState(false);
 
+  // Cargar artículos
   useEffect(() => {
     const fetchArticulos = async () => {
       const snap = await getDocs(collection(db, "Articulo"));
       setArticulos(
         snap.docs
-          .map((d) => ({
-            id: d.id,
-            nombre: d.data().nombreArticulo,
-            baja: d.data().fechahorabaja || null,
-          }))
-          .filter((a) => !a.baja)
+          .map((d) => ({ id: d.id, nombre: d.data().nombreArticulo, ...d.data() }))
+          .filter((a) => a.fechaHoraBajaArticulo === null)
       );
     };
+
     fetchArticulos();
   }, []);
 
+  // Función para seleccionar un artículo
   const handleSelectArticulo = async (id) => {
     setSelectedId(id);
     setEditando(false);
@@ -38,8 +38,10 @@ export default function AjusteInventario() {
     }
   };
 
+  // Función para guardar el stock actual
   const handleGuardar = async () => {
     if (selectedId === "" || stockActual === null) return alert("Seleccioná un artículo");
+    // Actualizar el stock actual
     await updateDoc(doc(db, "Articulo", selectedId), {
       stockActualArticulo: parseInt(stockActual),
     });

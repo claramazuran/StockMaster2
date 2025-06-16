@@ -16,7 +16,7 @@ export default function UpdateArticulo() {
         .map(doc => ({
           id: doc.id,
           nombre: doc.data().nombreArticulo,
-          baja: doc.data().fechahorabaja || null,
+          baja: doc.data().fechaHoraBajaArticulo || null,
         }))
         .filter((a) => !a.baja);
       setArticulos(lista);
@@ -104,10 +104,12 @@ export default function UpdateArticulo() {
                 value={articulo.costoAlmacenamientoArticulo}
                 onChange={(e) => {
                   const valor = e.target.value;
-                  if (valor < 0) {
+                  if (valor <= 0) {
                     alert("El costo de almacenamiento no puede ser negativo");
                   } else {
                     setArticulo({ ...articulo, costoAlmacenamientoArticulo: e.target.value })
+                    // Re-Calcular el CGI
+                    
                   }
                 }}/>
             </div>

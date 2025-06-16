@@ -1,24 +1,35 @@
 //hola estoy probando la rama
 import { useState } from "react";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
 import db from "../../firebase";
 
 export default function AddArticulo() {
+  // Variables del Articulo
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [costoAlmacenamiento, setCostoAlmacenamiento] = useState("");
   const [demanda, setDemanda] = useState("");
   const [stock, setStock] = useState("");
 
+  // Funcion para guardar el articulo
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Evitar que se envíe el formulario
 
+    // Validar que todos los campos estén completos
+    if (!nombre || !descripcion || !costoAlmacenamiento || !demanda || !stock) {
+      alert("Por favor, rellena todos los campos");
+      return;
+    }
+
+    // Guardar el artículo en la base de datos
     await addDoc(collection(db, "Articulo"), {
       nombreArticulo: nombre,
       descripcionArticulo: descripcion,
       costoAlmacenamientoArticulo: parseFloat(costoAlmacenamiento),
       demandaArticulo: parseInt(demanda),
       stockActualArticulo: parseInt(stock),
+      fechaHoraAltaArticulo: Timestamp.now(),
+      fechaHoraBajaArticulo: null,
     });
 
     alert("Artículo agregado");
@@ -57,7 +68,7 @@ export default function AddArticulo() {
             type="number" value={costoAlmacenamiento} onChange={(e) => {
               const valor = e.target.value;
               //logica para que el valor no pueda ser negativo
-              if (valor < 0) {
+              if (valor <= 0) {
                 alert("El costo de almacenamiento no puede ser negativo");
                 setCostoAlmacenamiento("");
               } else {
