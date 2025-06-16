@@ -116,7 +116,7 @@ export default function UpdateArticulo() {
           </div>
 
           <div className="mb-3 row">
-            <label className="col-sm-3 col-form-label">Demanda</label>
+            <label className="col-sm-3 col-form-label">Demanda Diaria</label>
             <div className="col-sm-9">
               <input className="form-control" type="number"
                 value={articulo.demandaArticulo}

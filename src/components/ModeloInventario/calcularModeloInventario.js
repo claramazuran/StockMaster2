@@ -107,7 +107,7 @@ export function calcularModeloInventarioPeriodoFijo (articuloProveedor, articulo
         articuloId: articuloSeleccionado.id,
         tipoModeloId: tipoSeleccionado.id,
         cantidadAPedirOptima: parseInt(cantidadAPedirOptima),
-        puntoPedido: parseInt(puntoPedido),
+        puntoPedido: '-',
         periodoRevision: parseInt(periodoRevision),
         desviacionEstandar: desviacion,
         stockSeguridad: parseInt(stockSeguridad),
