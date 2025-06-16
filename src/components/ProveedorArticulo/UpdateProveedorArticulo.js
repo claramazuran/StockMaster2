@@ -21,7 +21,7 @@ export default function UpdateArticuloProveedor() {
           .map(d => ({
             id: d.id,
             nombre: d.data().nombreArticulo,
-            baja: d.data().fechahorabaja || null,
+            baja: d.data().fechaHoraBajaArticulo || null,
           }))
           .filter(a => !a.baja)
       );

@@ -33,14 +33,24 @@ export default function DeleteProveedor() {
     //Verificar si es proveedor predeterminado en algún artículo
     const artSnap = await getDocs(collection(db, "Articulo"));
     for (const art of artSnap.docs) {
+      const articuloData = art.data();
+
+      // Ignorar artículos dados de baja
+      if (articuloData.fechaHoraBajaArticulo) continue;
+
+      // Verificar si el proveedor es predeterminado en algún artículo
       const subSnap = await getDocs(
         collection(db, "Articulo", art.id, "ArticuloProveedor")
       );
+
+      // Verificar si alguno de los artículos tiene el proveedor predeterminado
       const algunoPredeterminado = subSnap.docs.some(
         d =>
           d.id === idProveedor &&
           d.data().esProveedorPredeterminado === true
       );
+
+      // Si tiene alguno, mostrar mensaje de error
       if (algunoPredeterminado) {
         alert("❌ No se puede dar de baja: es proveedor predeterminado en un artículo.");
         return false;

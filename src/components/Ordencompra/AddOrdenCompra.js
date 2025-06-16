@@ -45,14 +45,18 @@ export default function AddOrdenPorArticulo() {
           .find(m => m.codArticulo === artDoc.id);
 
         // Calcular cantidad sugerida
-        let cantidadSugerida = 1;
+        /*let cantidadSugerida = 1;
         if (modelo) {
           if (modelo.nombreModeloInventario === "Lote Fijo") {
             cantidadSugerida = modelo.loteOptimo ?? 1;
           } else if (modelo.nombreModeloInventario === "Periodo Fijo") {
             cantidadSugerida = modelo.inventarioMaximo ?? 1;
           }
-        }
+        }*/
+
+        // Tomar cantidad sugerida desde Firestore
+        let cantidadSugerida = modelo?.cantidadAPedirOptima ?? 1;
+
 
         articulos.push({
           id: artDoc.id,
@@ -70,22 +74,26 @@ export default function AddOrdenPorArticulo() {
     fetchArticulosConProveedor();
   }, []);
 
+  // Funcion para Agregar Items a la Orden de Compra
   const handleAgregarItem = () => {
     setItems([...items, { codArticulo: "", cantidad: "" }]);
   };
 
+  // Funcion para Eliminar Items de la Orden de Compra
   const handleEliminarItem = (index) => {
     const nuevo = [...items];
     nuevo.splice(index, 1);
     setItems(nuevo);
   };
 
+  // Funcion para cambiar un campo de un Item de la Orden de Compra
   const handleItemChange = (index, campo, valor) => {
     const nuevo = [...items];
     nuevo[index][campo] = valor;
     setItems(nuevo);
   };
 
+  // Funcion para enviar la Orden de Compra
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (items.length === 0) return alert("Agregá al menos un artículo");
@@ -97,15 +105,28 @@ export default function AddOrdenPorArticulo() {
       const articulo = articulosDisponibles.find(a => a.id === item.codArticulo);
       if (!articulo) return alert("Artículo no válido");
 
+      // Validación de cantidad pedida
+      const cantidadPedida = parseInt(item.cantidad, 10); // Convertir a número
+      if (isNaN(cantidadPedida) || cantidadPedida < 1) { // Validar número y mayor a 0
+        return alert("La cantidad debe ser un número mayor a 0");
+      }
+
+      // Validación de cantidad sugerida
+      if (cantidadPedida < articulo.cantidadSugerida) { // Validar cantidad pedida vs sugerida
+        return alert(
+          `La cantidad pedida para "${articulo.nombre}" debe ser igual o mayor a la sugerida (${articulo.cantidadSugerida}).`
+        );
+      }
+
       // Validación de punto de pedido para Lote Fijo
       if (
         articulo.modelo &&
         articulo.modelo.nombreModeloInventario === "Lote Fijo" &&
-        (articulo.stockActual + parseInt(item.cantidad, 10)) <= articulo.puntoPedido
+        (articulo.stockActual + cantidadPedida) <= articulo.puntoPedido
       ) {
         return alert(
           `No se puede crear la OC para "${articulo.nombre}":\n` +
-          `La cantidad total (${articulo.stockActual} en stock + ${item.cantidad} a pedir = ${articulo.stockActual + parseInt(item.cantidad)}) no supera el punto de pedido (${articulo.puntoPedido}).`
+          `La cantidad total (${articulo.stockActual} en stock + ${cantidadPedida} a pedir = ${articulo.stockActual + cantidadPedida}) no supera el punto de pedido (${articulo.puntoPedido}).`
         );
       }
     }
@@ -145,6 +166,7 @@ export default function AddOrdenPorArticulo() {
     setItems([]);
   };
 
+  // Renderización de la Pagina
   return (
     <form onSubmit={handleSubmit} className="container my-4">
       <h4>➕ Crear Orden de Compra por Artículo</h4>

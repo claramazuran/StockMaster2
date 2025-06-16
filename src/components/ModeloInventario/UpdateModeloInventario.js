@@ -33,7 +33,7 @@ export default function UpdateModeloInventario() {
           demandaArticulo: d.data().demandaArticulo,
           stockActualArticulo: d.data().stockActualArticulo,
           costoAlmacenamientoArticulo: d.data().costoAlmacenamientoArticulo,
-          baja: d.data().fechahorabaja || null,
+          baja: d.data().fechaHoraBajaArticulo || null,
         }))
         .filter(a => !a.baja);
 
@@ -41,7 +41,7 @@ export default function UpdateModeloInventario() {
       const modelosFiltrados = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .filter(a =>
-          !a.fechahorabaja &&
+          !a.fechaHoraBajaArticulo &&
           articulosActivos.some(a2 => a2.id === a.articuloId)
         );
 
@@ -63,7 +63,7 @@ export default function UpdateModeloInventario() {
     const load = async () => {
       const ref = doc(db, "ModeloInventario", selectedId);
       const snap = await getDoc(ref);
-      if (!snap.exists() || snap.data().fechahorabaja) {
+      if (!snap.exists() || snap.data().fechaHoraBajaArticulo) {
         setData(null);
         setTipoModelo(null);
         return;
