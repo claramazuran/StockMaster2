@@ -16,7 +16,7 @@ export default function AjusteInventario() {
       setArticulos(
         snap.docs
           .map((d) => ({ id: d.id, nombre: d.data().nombreArticulo, ...d.data() }))
-          .filter((a) => a.fechaHoraBajaArticulo === null)
+          .filter((a) => a.fechaHoraBajaArticulo === null) // filtrar artículos que no estan dados de baja
       );
     };
 

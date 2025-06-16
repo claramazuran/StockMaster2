@@ -12,89 +12,115 @@ export default function ResumenInventario() {
 
   useEffect(() => {
     const fetchDataAndCalculate = async () => {
-      const artSnap = await getDocs(collection(db, "Articulo"));
-      const modeloSnap = await getDocs(collection(db, "ModeloInventario"));
-      const provSnap = await getDocs(collection(db, "Proveedor"));
-      const tipoModeloSnap = await getDocs(collection(db, "TipoModeloInventario"));
+      try {
+        // Obtener todo en paralelo
+        const [artSnap, modeloSnap, provSnap, tipoModeloSnap] = await Promise.all([
+          getDocs(collection(db, "Articulo")),
+          getDocs(collection(db, "ModeloInventario")),
+          getDocs(collection(db, "Proveedor")),
+          getDocs(collection(db, "TipoModeloInventario")),
+        ]);
 
-      setTipoModelos(tipoModeloSnap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((tm) => !tm.fechaHoraBajaTipoModeloInventario));
+        // Filtrar tipo modelos activos
+        const tipoModelosData = tipoModeloSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((tm) => !tm.fechaHoraBajaTipoModeloInventario);
+        setTipoModelos(tipoModelosData);
 
-      const articulosData = artSnap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((a) => !a.fechaHoraBajaArticulo);
+        // Artículos activos
+        const articulosData = artSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((a) => !a.fechaHoraBajaArticulo); // filtrar artículos que no estan dados de baja
 
-      const modelosData = modeloSnap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
+        // Modelos (sin filtrar)
+        const modelosData = modeloSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setModelos(modelosData);
 
-      // FILTRAR proveedores dados de baja
-      const nombres = {};
-      provSnap.docs.forEach((d) => {
-        if (!d.data().fechaHoraBajaProveedor) {
-          nombres[d.id] = d.data().nombreProveedor || d.id;
+        // Nombres de proveedores activos
+        const nombres = {};
+        provSnap.docs.forEach((d) => {
+          const data = d.data();
+          if (!data.fechaHoraBajaProveedor) {
+            nombres[d.id] = data.nombreProveedor || d.id;
+          }
+        });
+        setNombresProveedores(nombres);
+
+        // Obtener proveedores por artículo en paralelo
+        const proveedoresData = await Promise.all(
+          artSnap.docs.map(async (a) => {
+            const sub = await getDocs(collection(db, "Articulo", a.id, "ArticuloProveedor"));
+            return {
+              id: a.id,
+              proveedores: sub.docs
+                .map((d) => ({ id: d.id, ...d.data() }))
+                .filter((p) => !p.fechaHoraBajaArticuloProveedor),
+            };
+          })
+        );
+
+        const provsMap = {};
+        proveedoresData.forEach(({ id, proveedores }) => {
+          provsMap[id] = proveedores;
+        });
+        setProveedores(provsMap);
+
+        // Logs de advertencia
+        for (const a of articulosData) {
+          const m = modelosData.find((m) => m.articuloId === a.id);
+          const listaProv = provsMap[a.id] || [];
+          const pred = listaProv.find(p => p.esProveedorPredeterminado);
+
+          if (!m) console.log(`❌ Sin modelo para ${a.nombreArticulo}`);
+          if (!pred) console.log(`❌ Sin proveedor predeterminado para ${a.nombreArticulo}`);
         }
-      });
 
-      // Cargar proveedores por artículo (filtrando los dados de baja lógica)
-      const provs = {};
-      for (const a of artSnap.docs) {
-        const sub = await getDocs(collection(db, "Articulo", a.id, "ArticuloProveedor"));
-        provs[a.id] = sub.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .filter(p => !p.fechaHoraBajaArticuloProveedor);
+        setArticulos(articulosData);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error al cargar datos de inventario:", error);
       }
-
-      // --- Calcular y actualizar modelos en lote, con LOGS ---
-      for (const a of articulosData) {
-        const m = modelosData.find((m) => m.articuloId === a.id);
-        const listaProv = provs[a.id] || [];
-        const pred = listaProv.find(p => p.esProveedorPredeterminado);
-
-        if (!m) {
-          console.log(`No hay modelo inventario para el artículo ${a.nombreArticulo}`);
-          continue;
-        }
-
-        if (!pred) {
-          console.log(`No hay proveedor predeterminado para ${a.nombreArticulo}`);
-          continue;
-        }
-      } 
-
-      setArticulos(articulosData);
-      setModelos(modelosData);
-      setProveedores(provs);
-      setNombresProveedores(nombres);
-      setLoading(false);
     };
 
     fetchDataAndCalculate();
   }, []);
 
+  // Helpers
   const getModeloDeArticulo = (id) => modelos.find((m) => m.articuloId === id);
-  
   const getTipoModelo = (id) => tipoModelos.find((tm) => tm.id === id);
-
-  const tieneOrdenPendiente = (articuloId) => false; // placeholder
-  
-  // Devuelve el proveedor-artículo predeterminado de un artículo
+  const tieneOrdenPendiente = (articuloId) => false; // TODO: lógica real
   const getProveedorPredeterminado = (articuloId) => {
-    const listaProv = proveedores[articuloId] || [];
-    return listaProv.find(p => p.esProveedorPredeterminado) || null;
+    const lista = proveedores[articuloId] || [];
+    return lista.find(p => p.esProveedorPredeterminado) || null;
   };
 
-  const calcularCGI = (a, m, tm, proveedorPredeterminado) => {
-    console.log({
-      costoPedidoArticulo: a.costoPedidoArticulo,
-      demandaArticulo: a.demandaArticulo,
-      cantidadAPedirOptima: m.cantidadAPedirOptima,
-      costoAlmacenamientoArticulo: a.costoAlmacenamientoArticulo
-});
-    if (!a || !m || !tm ||tm.nombre !== "Modelo de Lote Fijo" || !m.cantidadAPedirOptima || !proveedorPredeterminado) return null;
-    const { demandaArticulo, costoAlmacenamientoArticulo } = a;
-    const lote = m.cantidadAPedirOptima;
-    const cgi = (proveedorPredeterminado.costoPedidoArticulo * demandaArticulo) / lote + (lote / 2) * costoAlmacenamientoArticulo;
+  // CALCULO DE CGI 
+  const calcularCGI = (articulo, modelo, proveedorArticulo) => {
+    if (!articulo) {
+      console.log ('No hay articulo');
+      return null;
+    } else if (!modelo) {
+      console.log ('No hay modelo');
+      return null;
+    } else if (!proveedorArticulo) {
+      console.log ('No hay proveedor articulo');
+      return null;
+    }
+    
+    const costoAlmacenamiento = parseFloat(articulo.costoAlmacenamientoArticulo);
+    const demanda = parseFloat(articulo.demandaArticulo);
+    const demandaAnual = demanda * 365;
+    const costoPedido = parseFloat(proveedorArticulo.costoPedidoArticulo);
+    const loteOptimo = parseFloat(modelo.cantidadAPedirOptima);
+    const costoPorUnidad = parseFloat(proveedorArticulo.costoCompra);
+
+    if ([costoAlmacenamiento, demanda, costoPedido, loteOptimo, costoPorUnidad].some(isNaN)) {
+      return null;
+    }
+
+    const cgi = ((costoPedido * demandaAnual) / loteOptimo) +
+                (demandaAnual * costoPorUnidad) +
+                ((loteOptimo / 2) * costoAlmacenamiento);
     return cgi.toFixed(2);
   };
 
@@ -122,7 +148,7 @@ export default function ResumenInventario() {
               <th>Punto pedido</th>
               <th>Stock Seguridad</th>
               <th>CGI</th>
-              <th>Periodo Revision en Dias</th>
+              <th>Per. Revisión (días)</th>
               <th>Proveedores</th>
               <th>Estado</th>
             </tr>
@@ -130,40 +156,37 @@ export default function ResumenInventario() {
           <tbody>
             {articulos.map((a) => {
               const m = getModeloDeArticulo(a.id);
-              const tm = getTipoModelo(m?.tipoModeloId);
-              const proveedorPredeterminado = getProveedorPredeterminado(a.id);
               if (!m) return null;
+
+              const tm = getTipoModelo(m.tipoModeloId);
+              const proveedorPred = getProveedorPredeterminado(a.id);
               const rowClass = getRowClass(a, m);
               const listaProv = proveedores[a.id] || [];
 
-              let estado;
-
-              if (a.stockActualArticulo <= (m?.stockSeguridad ?? 0)) {
+              let estado = "✅ OK";
+              if (a.stockActualArticulo <= (m.stockSeguridad ?? 0)) {
                 estado = "🟠 Faltante";
-              } else if (
-                a.stockActualArticulo <= (m?.puntoPedido ?? 0)
-                && !tieneOrdenPendiente(a.id)
-              ) {
+              } else if (a.stockActualArticulo <= (m.puntoPedido ?? 0) && !tieneOrdenPendiente(a.id)) {
                 estado = "🔴 Reponer";
-              } else {
-                estado = "✅ OK";
               }
+
               return (
                 <tr key={a.id} className={rowClass}>
                   <td>{a.nombreArticulo}</td>
                   <td>{a.stockActualArticulo}</td>
                   <td>{a.demandaArticulo}</td>
-                  <td>{tm?.nombre || "-"}</td>
-                  <td>{m?.cantidadAPedirOptima ?? "-"}</td>
-                  <td>{m?.puntoPedido ?? "-"}</td>
-                  <td>{m?.stockSeguridad ?? "-"}</td>
-                  <td>{calcularCGI(a, m, tm, proveedorPredeterminado) ?? "-"}</td>
-                  <td>{m?.periodoRevision ?? "-"}</td>
+                  <td>{tm?.nombre ?? "-"}</td>
+                  <td>{m.cantidadAPedirOptima ?? "-"}</td>
+                  <td>{m.puntoPedido ?? "-"}</td>
+                  <td>{m.stockSeguridad ?? "-"}</td>
+                  <td>{calcularCGI(a, m, proveedorPred) ?? "-"}</td>
+                  <td>{m.periodoRevision ?? "-"}</td>
                   <td>
                     {listaProv.length > 0
                       ? listaProv.map((p, i) => (
                           <div key={i}>
-                            {nombresProveedores[p.codProveedor] || p.codProveedor} ({p.precioUnitario}) {p.esProveedorPredeterminado ? "⭐" : ""}
+                            {nombresProveedores[p.codProveedor] || p.codProveedor} ({p.precioUnitario}){" "}
+                            {p.esProveedorPredeterminado ? "⭐" : ""}
                           </div>
                         ))
                       : "-"}

@@ -146,12 +146,12 @@ export default function AddArticuloProveedor() {
             className="form-control mb-2"
             value={precioUnitario}
             onChange={(e) => {
-              const valor = e.target.value;
+              const valor = parseFloat(e.target.value);
               if (valor < 0) {
                 alert("El precio unitario no puede ser negativo");
                 setPrecioUnitario("");
               } else {
-              setPrecioUnitario(e.target.value)
+                setPrecioUnitario(valor)
               }
             }}/>
         </div>
@@ -163,12 +163,12 @@ export default function AddArticuloProveedor() {
             className="form-control mb-2"
             value={demoraEntrega}
             onChange={(e) => {
-              const valor = e.target.value;
+              const valor = parseFloat(e.target.value);
               if (valor < 0) {
                 alert("La demora de entrega no puede ser negativa");
                 setDemoraEntrega("");
               } else {
-              setDemoraEntrega(e.target.value)
+                setDemoraEntrega(valor)
               }
             }}/>
         </div>
@@ -178,12 +178,12 @@ export default function AddArticuloProveedor() {
             <input className="form-control mb-2"
               type="number" value={costoPedido} onChange={(e) => {
                 //logica para que el valor no pueda ser negativo
-                  const valor = e.target.value;
+                  const valor = parseFloat(e.target.value);
                 if (valor < 0) {
                   alert("El costo de pedido no puede ser negativo");
                   setCostoPedido("");
                 } else {
-                  setCostoPedido(e.target.value);
+                  setCostoPedido(valor);
                 }
                 }}/>
           </div>
