@@ -95,7 +95,7 @@ export default function ResumenInventario() {
   };
 
   // CALCULO DE CGI 
-  const calcularCGI = (articulo, modelo, proveedorArticulo) => {
+  const calcularCGI = (articulo, modelo, tm ,proveedorArticulo) => {
     if (!articulo) {
       console.log ('No hay articulo');
       return null;
@@ -112,13 +112,14 @@ export default function ResumenInventario() {
     const demandaAnual = demanda * 365;
     const costoPedido = parseFloat(proveedorArticulo.costoPedidoArticulo);
     const loteOptimo = parseFloat(modelo.cantidadAPedirOptima);
-    const costoPorUnidad = parseFloat(proveedorArticulo.costoCompra);
+    const costoPorUnidad = parseFloat(proveedorArticulo.precioUnitario);
 
     if ([costoAlmacenamiento, demanda, costoPedido, loteOptimo, costoPorUnidad].some(isNaN)) {
       return null;
     }
+    if (!articulo || !modelo || !tm ||tm.nombre !== "Modelo de Lote Fijo" || !modelo.cantidadAPedirOptima || !proveedorArticulo) return null;
 
-    const cgi = ((costoPedido * demandaAnual) / loteOptimo) +
+    const cgi = ((demandaAnual / loteOptimo) * costoPedido) +
                 (demandaAnual * costoPorUnidad) +
                 ((loteOptimo / 2) * costoAlmacenamiento);
     return cgi.toFixed(2);
@@ -179,7 +180,7 @@ export default function ResumenInventario() {
                   <td>{m.cantidadAPedirOptima ?? "-"}</td>
                   <td>{m.puntoPedido ?? "-"}</td>
                   <td>{m.stockSeguridad ?? "-"}</td>
-                  <td>{calcularCGI(a, m, proveedorPred) ?? "-"}</td>
+                  <td>{calcularCGI(a, m, tm, proveedorPred) ?? "-"}</td>
                   <td>{m.periodoRevision ?? "-"}</td>
                   <td>
                     {listaProv.length > 0

@@ -1,5 +1,5 @@
 export default function CalcularModeloInventario(
-  articuloSeleccionado, tipoSeleccionado, formData = null, articuloProveedor, data = null 
+    articuloSeleccionado, tipoSeleccionado, formData = null, articuloProveedor, data = null 
 ) {
     //si estoy dando de alta un modelo de inventario CON FORMDATA
     if (articuloSeleccionado && tipoSeleccionado && formData && articuloProveedor) {
@@ -73,8 +73,8 @@ export function calcularModeloInventarioLoteFijo (articuloProveedor, articuloSel
     const Z = 1.65; // nivel de servicio 95%
 
     // Calculos del Modelo de Inventario Fijo
-    const cantidadAPedirOptima = Math.ceil(Math.sqrt((2 * (demandaDiaria) * costoPedido)/costoAlmacenamiento));
-    const stockSeguridad = Math.ceil(Z * desviacion);
+    const cantidadAPedirOptima = Math.ceil(Math.sqrt((2 * (demandaDiaria * 365) * costoPedido)/costoAlmacenamiento));
+    const stockSeguridad = Math.ceil(Z * desviacion * Math.sqrt(demoraEntrega));
     const puntoPedido = Math.ceil((demandaDiaria) * demoraEntrega + stockSeguridad);
             
     const newModelo = {
