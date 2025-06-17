@@ -125,6 +125,21 @@ export default function ResumenInventario() {
     return cgi.toFixed(2);
   };
 
+  // CALCULO DE PROXIMO PERIODO DE REVISION
+  const calcularProximoPeriodoRevision = (articulo, modelo, tipoModelo) => {
+  // Validar que el modelo sea de tipo "Modelo de Período Fijo"
+  if (!articulo || !modelo || !tipoModelo || tipoModelo.nombre !== "Modelo de Periodo Fijo" || !modelo.periodoRevision || !articulo.fechaHoraAltaArticulo) {
+    return "-";
+  }
+
+  const fechaCreacion = articulo.fechaHoraAltaArticulo.toDate(); // Convertir Timestamp a Date
+  const diasRevision = modelo.periodoRevision;
+  const proximaRevision = new Date(fechaCreacion.getTime() + diasRevision * 24 * 60 * 60 * 1000); // Sumar días de revisión
+
+  return proximaRevision.toLocaleDateString(); // Formatear fecha
+};
+
+
   const getRowClass = (a, m) => {
     if (!m) return "";
     if (a.stockActualArticulo <= m.puntoPedido && !tieneOrdenPendiente(a.id)) return "table-danger";
@@ -148,8 +163,9 @@ export default function ResumenInventario() {
               <th>Lote óptimo</th>
               <th>Punto pedido</th>
               <th>Stock Seguridad</th>
-              <th>CGI</th>
+              <th>CTA</th>
               <th>Per. Revisión (días)</th>
+              <th>Próximo Per. Revisión</th>
               <th>Proveedores</th>
               <th>Estado</th>
             </tr>
@@ -182,6 +198,7 @@ export default function ResumenInventario() {
                   <td>{m.stockSeguridad ?? "-"}</td>
                   <td>{calcularCGI(a, m, tm, proveedorPred) ?? "-"}</td>
                   <td>{m.periodoRevision ?? "-"}</td>
+                  <td>{calcularProximoPeriodoRevision(a, m, tm)}</td>
                   <td>
                     {listaProv.length > 0
                       ? listaProv.map((p, i) => (
