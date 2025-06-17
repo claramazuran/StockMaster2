@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, doc, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import db from "../../firebase";
 
 export default function TablaOrdenesCompra() {
@@ -12,6 +12,7 @@ export default function TablaOrdenesCompra() {
 
   useEffect(() => {
     const fetchData = async () => {
+      console.log("INICIO FETCH DATA");
       const [provSnap, artSnap, ordenSnap] = await Promise.all([
         getDocs(collection(db, "Proveedor")),
         getDocs(collection(db, "Articulo")),
@@ -40,73 +41,104 @@ export default function TablaOrdenesCompra() {
       });
       setArticulos(artMap);
 
-      // Órdenes de compra activas (sin baja)
+      // Procesar órdenes (ahora usando los campos directos del documento)
       const ordenesConDatos = await Promise.all(
         ordenSnap.docs
           .filter((orden) => !orden.data().fechaHoraBajaOrdenCompra)
           .map(async (orden) => {
+            const d = orden.data();
             const id = orden.id;
-            const { codProveedor, fechaHoraOrdenCompra } = orden.data();
 
-            // Estado activo (el último sin baja)
-            const estadoSnap = await getDocs(
-              query(
-                collection(db, "OrdenCompra", id, "EstadoOrdenCompra"),
-                where("fechaHoraBajaEstadoCompra", "==", null)
-              )
-            );
-            const estado = estadoSnap.empty
-              ? "Sin estado"
-              : estadoSnap.docs[0].data().nombreEstadoCompra;
+            console.log("ORDEN:", d);
 
-            // Detalle OC
-            const detalleSnap = await getDocs(
-              collection(db, "OrdenCompra", id, "DetalleOrdenCompra")
-            );
-            if (detalleSnap.empty) {
-              console.log("OC sin DetalleOrdenCompra:", id);
+            const {
+              codProveedor,
+              fechaHoraOrdenCompra,
+              numeroDeOrdenCompra,
+              codArticulo,
+              cantidadComprada,
+            } = d;
+
+            // Estado actual
+            // (puede seguir igual si usás subcolección EstadoOrdenCompra)
+            let estado = "Sin estado";
+            try {
+              const estadoSnap = await getDocs(
+                collection(db, "OrdenCompra", id, "EstadoOrdenCompra")
+              );
+              if (!estadoSnap.empty) {
+                const actual = estadoSnap.docs.find(
+                  (e) => e.data().fechaHoraBajaEstadoCompra == null
+                );
+                if (actual) estado = actual.data().nombreEstadoCompra;
+              }
+            } catch (e) {
+              // Si no existe subcolección, ignora
             }
-            const detalleDoc = detalleSnap.docs[0];
-            const detalleId = detalleDoc?.id;
-            const detalle = detalleDoc?.data();
-            const precioTotal = detalle?.precioTotal ?? 0;
 
-            const articulosSnap = detalleId
-              ? await getDocs(
-                  collection(
+            // ARTICULO y proveedor
+            let nombreArticulo = codArticulo;
+            let articuloActivo = false;
+            let precioUnitario = 0;
+            let costoCompra = 0;
+
+            if (codArticulo) {
+              const articuloRef = doc(db, "Articulo", codArticulo);
+              const articuloDoc = await getDoc(articuloRef);
+              if (articuloDoc.exists()) {
+                const artData = articuloDoc.data();
+                nombreArticulo = artData.nombreArticulo;
+                articuloActivo = !artData.fechaHoraBajaArticulo;
+                // Buscar proveedor para precio unitario y costo
+                if (codProveedor) {
+                  const proveedorRef = doc(
                     db,
-                    "OrdenCompra",
-                    id,
-                    "DetalleOrdenCompra",
-                    detalleId,
-                    "articulos"
-                  )
-                )
-              : { docs: [] };
+                    "Articulo",
+                    codArticulo,
+                    "ArticuloProveedor",
+                    codProveedor
+                  );
+                  const proveedorDoc = await getDoc(proveedorRef);
+                  if (proveedorDoc.exists()) {
+                    const provData = proveedorDoc.data();
+                    precioUnitario = provData.precioUnitario || 0;
+                    costoCompra = provData.costoCompra || 0;
+                    console.log("ARTICULO PROVEEDOR", provData);
+                  } else {
+                    console.log("NO EXISTE ArticuloProveedor para", codArticulo, codProveedor);
+                  }
+                }
+              }
+            }
 
-            // Artículos activos en la OC
-            const articulosOrden = articulosSnap.docs.map((a) => ({
-              id: a.id,
-              nombre: artMap[a.id] ?? a.id,
-              ...a.data(),
-              activo: !!artMap[a.id],
-            }));
-
-            // Si el proveedor está de baja, igual lo mostramos e indicamos "(Baja)"
+            const precioTotal = (precioUnitario * (cantidadComprada || 0)) + costoCompra;
             let proveedorLabel = provMap[codProveedor] || provBajaMap[codProveedor] || codProveedor;
             if (provBajaMap[codProveedor]) proveedorLabel += " (Baja)";
 
             return {
               id,
+              numeroDeOrdenCompra,
               proveedor: proveedorLabel,
               fecha: fechaHoraOrdenCompra?.toDate?.() || new Date(),
               estado,
               precioTotal,
-              articulos: articulosOrden,
+              articulos: codArticulo
+                ? [
+                    {
+                      id: codArticulo,
+                      nombre: nombreArticulo,
+                      precioUnitario,
+                      costoCompra,
+                      cantidad: cantidadComprada,
+                      activo: articuloActivo,
+                    },
+                  ]
+                : [],
             };
           })
       );
 
+      console.log("ORDENES FINAL:", ordenesConDatos);
       setOrdenes(ordenesConDatos.filter(Boolean));
     };
 
@@ -114,7 +146,9 @@ export default function TablaOrdenesCompra() {
   }, []);
 
   const ordenesFiltradas = ordenes
-    .filter((o) => o.proveedor.toLowerCase().includes(filtro.toLowerCase()))
+    .filter((o) =>
+      (o.proveedor || "").toLowerCase().includes(filtro.toLowerCase())
+    )
     .sort((a, b) =>
       ordenAsc
         ? a.fecha?.getTime() - b.fecha?.getTime()
@@ -146,7 +180,9 @@ export default function TablaOrdenesCompra() {
 
       {ordenesFiltradas.map((orden) => (
         <div key={orden.id} className="card mb-3 p-3">
-          <h5>Orden #{orden.id}</h5>
+          <h5>
+            Orden N°{orden.numeroDeOrdenCompra || orden.id}
+          </h5>
           <p>
             <strong>Proveedor:</strong> {orden.proveedor}
           </p>
@@ -165,8 +201,9 @@ export default function TablaOrdenesCompra() {
               <thead>
                 <tr>
                   <th>Artículo</th>
-                  <th>Precio</th>
+                  <th>Precio Unitario</th>
                   <th>Cantidad</th>
+                  <th>Costo Compra</th>
                   <th>Estado</th>
                 </tr>
               </thead>
@@ -179,8 +216,9 @@ export default function TablaOrdenesCompra() {
                         <span className="text-danger ms-2">(Baja)</span>
                       )}
                     </td>
-                    <td>${a.precioArticulo}</td>
+                    <td>${a.precioUnitario}</td>
                     <td>{a.cantidad}</td>
+                    <td>${a.costoCompra}</td>
                     <td>
                       {a.activo ? "Activo" : "Dado de baja"}
                     </td>
@@ -190,7 +228,7 @@ export default function TablaOrdenesCompra() {
             </table>
           ) : (
             <p className="text-muted">
-              Sin artículos registrados en el primer detalle.
+              Sin artículos registrados.
             </p>
           )}
         </div>
