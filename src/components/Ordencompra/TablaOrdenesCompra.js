@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
 import db from "../../firebase";
 
 export default function TablaOrdenesCompra() {
@@ -9,6 +10,7 @@ export default function TablaOrdenesCompra() {
   const [articulos, setArticulos] = useState({});
   const [filtro, setFiltro] = useState("");
   const [ordenAsc, setOrdenAsc] = useState(true);
+  const navigate = useNavigate(); // Initialize useNavigate
 
   useEffect(() => {
     const fetchData = async () => {
@@ -231,6 +233,14 @@ export default function TablaOrdenesCompra() {
               Sin artículos registrados.
             </p>
           )}
+
+          {/* Add Edit Button */}
+          <button
+            className="btn btn-light border border-dark border-1 mt-3"
+            onClick={() => navigate(`/update-orden-compra`)}
+          >
+            Editar Orden
+          </button>
         </div>
       ))}
     </div>
