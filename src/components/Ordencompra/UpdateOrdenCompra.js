@@ -89,8 +89,33 @@ export default function UpdateOrdenConDetalle() {
 
 
   const handleUpdate = async (e) => {
-    
     e.preventDefault();
+
+    if (!selectedOrdenId || !proveedorId) return alert("Faltan datos.");
+
+    // No permitir modificar si el estado es Enviada o Finalizada
+    if (["Enviada", "Finalizada", "Completada", "Cancelada"].includes(estadoActual)) {
+      return alert(`La orden está en estado "${estadoActual}" y no puede modificarse.`);
+    }
+
+    // --- VERIFICACIÓN DE PUNTO DE PEDIDO Y MODELO ---
+    // Traer el modelo de inventario del artículo
+    const modelosSnap = await getDocs(collection(db, "ModeloInventario"));
+    const modelo = modelosSnap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .find(m => m.articuloId === articuloOrdenCompra.id);
+
+    if (
+      modelo &&
+      modelo.tipoModeloId === "modelo1" &&
+      Number(ordenCompraSeleccionada.cantidadComprada) + (articuloOrdenCompra.stockActualArticulo || 0) <= (modelo.puntoPedido || 0)
+    ) {
+      return alert(
+        `La cantidad comprada debe ser mayor a la cantidad del Punto de Pedido (${modelo.puntoPedido}).`
+      );
+    }
+    // --- FIN VERIFICACIÓN ---
+
     const ref = doc(db, "OrdenCompra", selectedOrdenId);
     const ref1 = doc(db, "Articulo", articuloOrdenCompra.id, "ArticuloProveedor", proveedorId);
     const docSnap = await getDoc(ref1);
@@ -100,18 +125,10 @@ export default function UpdateOrdenConDetalle() {
       ...ordenCompraSeleccionada,
       cantidadComprada: ordenCompraSeleccionada.cantidadComprada,
       totalOrdenCompra: total,
-    });  
-    
-    if (!selectedOrdenId || !proveedorId) return alert("Faltan datos.");
-
-    // No permitir modificar si el estado es Enviada o Finalizada
-    if (["Enviada", "Finalizada", "Completada", "Cancelada"].includes(estadoActual)) {
-      return alert(`La orden está en estado "${estadoActual}" y no puede modificarse.`);
-    }
-
+    });
 
     alert("Orden actualizada correctamente");
-    };
+  };
   
 
   return (
