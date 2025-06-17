@@ -52,6 +52,7 @@ export default function UpdateEstadoOrdenCompra() {
               id: d.id,
               fecha: d.data().fechaHoraOrdenCompra?.toDate(),
               estado: estadoSnap.docs[0].data().nombreEstadoCompra,
+              numeroDeOrdenCompra: d.data().numeroDeOrdenCompra 
             });
           }
         }
@@ -145,7 +146,7 @@ export default function UpdateEstadoOrdenCompra() {
   };
 
   // Actualiza inventario y chequea punto de pedido para artículos de la OC
-  const actualizarInventarioAlFinalizar = async (ordenId) => {
+  /*const actualizarInventarioAlFinalizar = async (ordenId) => {
     const detallesSnap = await getDocs(
       collection(db, "OrdenCompra", ordenId, "DetalleOrdenCompra")
     );
@@ -191,7 +192,65 @@ export default function UpdateEstadoOrdenCompra() {
     if (mensajes.length) {
       alert(mensajes.join("\n"));
     }
-  };
+  };*/
+  const actualizarInventarioAlFinalizar = async (ordenId) => {
+  const ordenDoc = await getDoc(doc(db, "OrdenCompra", ordenId));
+  if (!ordenDoc.exists()) {
+    alert("La orden de compra no existe.");
+    return;
+  }
+
+  const orden = ordenDoc.data();
+  const { codArticulo, cantidadComprada } = orden;
+
+  if (!codArticulo || !cantidadComprada) {
+    alert("La orden no tiene artículo o cantidad definida.");
+    return;
+  }
+
+  // Obtener el artículo
+  const artDoc = await getDoc(doc(db, "Articulo", codArticulo));
+  if (!artDoc.exists()) {
+    alert("El artículo de la orden no existe.");
+    return;
+  }
+
+  const articulo = artDoc.data();
+  const nuevoStock = parseInt(articulo.stockActualArticulo || 0) + parseInt(cantidadComprada || 0);
+  console.log(nuevoStock)
+  console.log(articulo.stockActualArticulo)
+  console.log(cantidadComprada)
+
+  // Actualizar stock del artículo
+  await updateDoc(doc(db, "Articulo", codArticulo), {
+    stockActualArticulo: nuevoStock,
+  });
+
+  // Verificar modelo de inventario y punto de pedido
+  const qModelo = query(
+    collection(db, "ModeloInventario"),
+    where("codArticulo", "==", codArticulo)
+  );
+  const modeloSnap = await getDocs(qModelo);
+  let mensajes = [];
+
+  if (!modeloSnap.empty) {
+    const modelo = modeloSnap.docs[0].data();
+    if (
+      modelo.tipoModeloId === "modelo1" &&
+      nuevoStock <= (modelo.puntoPedido || 0)
+    ) {
+      mensajes.push(
+        `⚠️ El artículo "${articulo.nombreArticulo}" quedó con stock (${nuevoStock}) por debajo o igual al Punto de Pedido (${modelo.puntoPedido}).`
+      );
+    }
+  }
+
+  if (mensajes.length) {
+    alert(mensajes.join("\n"));
+  }
+};
+
 
   const getEstadosValidos = () => {
     if (!estadoActual) return [];
@@ -204,7 +263,7 @@ export default function UpdateEstadoOrdenCompra() {
 
   return (
     <div className="container my-4">
-      <h4>✏️ Actualizar Estado de Orden de Compra</h4>
+      <h4 className="text-center mb-5">✏️ Actualizar Estado de Orden de Compra</h4>
 
       <select
         className="form-select mb-3"
@@ -214,7 +273,7 @@ export default function UpdateEstadoOrdenCompra() {
         <option value="">Seleccionar Orden</option>
         {ordenes.map((o) => (
           <option key={o.id} value={o.id}>
-            Orden #{o.id} - {o.fecha?.toLocaleString()} (Estado: {o.estado})
+            Orden número {o.numeroDeOrdenCompra} - {o.fecha?.toLocaleString()} (Estado: {o.estado})
           </option>
         ))}
       </select>

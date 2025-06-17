@@ -24,6 +24,7 @@ export default function AddOrdenPorArticulo() {
         const art = artDoc.data();
         if (art.fechaHoraBajaArticulo) continue;
 
+        //me traigo al proveedor predeterminado
         const provArtSnap = await getDocs(collection(db, "Articulo", artDoc.id, "ArticuloProveedor"));
         const pred = provArtSnap.docs.find(
           p => p.data().esProveedorPredeterminado && !p.data().fechaHoraBajaArticuloProveedor
@@ -31,25 +32,25 @@ export default function AddOrdenPorArticulo() {
         if (!pred) continue;
 
         const proveedor = pred.data();
-        const nombreProveedorReal = provMap[proveedor.codProveedor] || proveedor.codProveedor;
+        const nombreProveedorReal = proveedor.nombreProveedor;
 
         const modelosSnap = await getDocs(collection(db, "ModeloInventario"));
         const modelo = modelosSnap.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .find(m => m.codArticulo === artDoc.id);
+          .find(m => m.articuloId === artDoc.id);
 
         let cantidadSugerida = null;
         let mostrarSugerencia = false;
 
-        if (modelo && (art.stockActualArticulo ?? 0) <= (modelo.puntoPedido ?? 0)) {
-          cantidadSugerida = modelo.cantidadAPedirOptima ?? 1;
+        if (modelo) {
+          cantidadSugerida = modelo.cantidadAPedirOptima;
           mostrarSugerencia = true;
         }
 
         articulos.push({
           id: artDoc.id,
           nombre: art.nombreArticulo,
-          proveedorPredeterminado: proveedor.codProveedor,
+          proveedorPredeterminado: proveedor,
           nombreProveedor: nombreProveedorReal,
           cantidadSugerida,
           mostrarSugerencia,
@@ -82,6 +83,7 @@ export default function AddOrdenPorArticulo() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (items.length === 0) return alert("Agregá al menos un artículo");
+    
 
     // Obtener número de orden incremental
     const ordenesSnap = await getDocs(collection(db, "OrdenCompra"));
@@ -106,20 +108,10 @@ export default function AddOrdenPorArticulo() {
         return alert("La cantidad debe ser un número mayor a 0");
       }
 
-      if (articulo.mostrarSugerencia && cantidadPedida < articulo.cantidadSugerida) {
+      //sugerencia de que tiene que comprar mas que el punto de pedido y que el modelo sea de lote fijo
+      if (articulo.mostrarSugerencia && cantidadPedida + articulo.stockActual <= articulo.puntoPedido && articulo.modelo.tipoModeloId == "modelo1") {
         return alert(
-          `La cantidad pedida para "${articulo.nombre}" debe ser igual o mayor a la sugerida (${articulo.cantidadSugerida}).`
-        );
-      }
-
-      if (
-        articulo.modelo &&
-        articulo.modelo.nombreModeloInventario === "Lote Fijo" &&
-        (articulo.stockActual + cantidadPedida) <= articulo.puntoPedido
-      ) {
-        return alert(
-          `No se puede crear la OC para "${articulo.nombre}":\n` +
-          `La cantidad total (${articulo.stockActual} + ${cantidadPedida}) no supera el punto de pedido (${articulo.puntoPedido}).`
+          `La cantidad pedida para "${articulo.nombre}" debe ser mayor a la cantidad del Punto de Pedido (${articulo.puntoPedido}).`
         );
       }
     }
@@ -128,11 +120,14 @@ export default function AddOrdenPorArticulo() {
       const articulo = articulosDisponibles.find(a => a.id === item.codArticulo);
       const fecha = new Date();
 
+      //creamos la orden de compra
       const ordenRef = await addDoc(collection(db, "OrdenCompra"), {
         fechaHoraOrdenCompra: fecha,
-        codProveedor: articulo.proveedorPredeterminado,
+        codProveedor: articulo.proveedorPredeterminado.codProveedor,
         codArticulo: articulo.id,
         numeroDeOrdenCompra,
+        cantidadComprada: item.cantidad,
+        totalOrdenCompra: item.cantidad * articulo.proveedorPredeterminado.precioUnitario,
       });
 
       await setDoc(doc(db, "OrdenCompra", ordenRef.id, "EstadoOrdenCompra", "Pendiente"), {
@@ -140,29 +135,19 @@ export default function AddOrdenPorArticulo() {
         fechaHoraAltaEstadoCompra: fecha,
         fechaHoraBajaEstadoCompra: null,
       });
-
-      const detalleRef = await addDoc(collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra"), {
-        fechaHoraAlta: fecha,
-        fechaHoraBaja: null,
-        precioTotal: 0,
-      });
-
-      await setDoc(doc(collection(db, "OrdenCompra", ordenRef.id, "DetalleOrdenCompra", detalleRef.id, "Articulo"), articulo.id), {
-        codArticulo: articulo.id,
-        cantidad: parseInt(item.cantidad),
-      });
     }
 
-    alert("Órdenes de compra registradas correctamente");
+    alert("Órden de compra registrada correctamente");
     setItems([]);
   };
 
   return (
     <form onSubmit={handleSubmit} className="container my-4">
       <h4>➕ Crear Orden de Compra por Artículo</h4>
-      <button type="button" className="btn btn-outline-primary mb-3" onClick={handleAgregarItem}>
+      {items.length <= 0 && (<button type="button" className="btn btn-outline-primary mb-3" onClick={handleAgregarItem}>
         ➕ Agregar Artículo
-      </button>
+      </button>)}
+      
 
       {items.map((item, i) => (
         <div key={i} className="card mb-3 p-3">
