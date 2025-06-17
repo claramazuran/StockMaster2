@@ -96,8 +96,6 @@ export default function Hub() {
                 <div className="d-grid gap-2">
                 <button className="btn btn-primary" onClick={() => navigate("/tabla-venta")}>Tabla Ventas</button>
                   <button className="btn btn-primary" onClick={() => navigate("/add-venta")}>Registrar Venta</button>
-                  <button className="btn btn-light border border-dark border-1" onClick={() => navigate("/update-venta")}>Editar Venta</button>
-                  <button className="btn btn-danger" onClick={() => navigate("/delete-venta")}>Eliminar Venta</button>
                 </div>
               </div>
             </div>

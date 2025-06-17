@@ -1,51 +1,44 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import db from "../../firebase";
 
 export default function TablaVentas() {
   const [ventas, setVentas] = useState([]);
   const [nombresArticulos, setNombresArticulos] = useState({});
-  const [articulosActivos, setArticulosActivos] = useState({});
+  const [ordenDesc, setOrdenDesc] = useState(true); // true = más reciente primero
 
   useEffect(() => {
     const fetchVentas = async () => {
-      // 1. Traer todos los artículos y armar el mapa id -> nombre, solo activos
+      // Traer todos los artículos y armar el mapa id -> nombre
       const artSnap = await getDocs(collection(db, "Articulo"));
       const nombres = {};
-      const activos = {};
       artSnap.docs.forEach(d => {
         if (!d.data().fechahorabaja) {
           nombres[d.id] = d.data().nombreArticulo || d.id;
-          activos[d.id] = true;
         }
       });
       setNombresArticulos(nombres);
-      setArticulosActivos(activos);
 
-      // 2. Traer ventas y detalles
+      // Traer ventas
       const snap = await getDocs(collection(db, "Venta"));
-      const data = [];
-
-      for (const docVenta of snap.docs) {
-        const ventaId = docVenta.id;
-        const ventaData = docVenta.data();
-
-        const detalleSnap = await getDocs(collection(db, "Venta", ventaId, "DetalleVenta"));
-        // Solo los artículos activos
-        const articulos = detalleSnap.docs
-          .map(d => d.data())
-          .filter(a => activos[a.codArticulo]);
-
-        // Si no hay ningún artículo activo, no mostrar esta venta
-        if (articulos.length === 0) continue;
-
-        data.push({
-          id: ventaId,
-          fecha: ventaData.fechaHoraVenta?.toDate().toLocaleString() || "-",
-          total: ventaData.precioTotalVenta || 0,
-          articulos,
-        });
-      }
+      const data = snap.docs
+        .map(docVenta => {
+          const ventaData = docVenta.data();
+          return {
+            id: docVenta.id,
+            fechaObj: ventaData.fechaHoraVenta?.toDate
+              ? ventaData.fechaHoraVenta.toDate()
+              : null,
+            fecha: ventaData.fechaHoraVenta?.toDate
+              ? ventaData.fechaHoraVenta.toDate().toLocaleString()
+              : "-",
+            total: ventaData.precioTotalVenta || 0,
+            codArticulo: ventaData.codArticulo,
+            cantidad: ventaData.cantidadVendidaArticulo,
+          };
+        })
+        // Solo ventas con artículo válido
+        .filter(v => v.codArticulo && nombres[v.codArticulo]);
 
       setVentas(data);
     };
@@ -53,44 +46,43 @@ export default function TablaVentas() {
     fetchVentas();
   }, []);
 
+  // Ordenar ventas según el estado del botón
+  const ventasOrdenadas = [...ventas].sort((a, b) => {
+    if (!a.fechaObj || !b.fechaObj) return 0;
+    return ordenDesc
+      ? b.fechaObj.getTime() - a.fechaObj.getTime()
+      : a.fechaObj.getTime() - b.fechaObj.getTime();
+  });
+
   return (
     <div className="container my-4">
       <h4>📋 Tabla de Ventas</h4>
-      {ventas.map((venta) => (
-        <div key={venta.id} className="card mb-4">
-          <div className="card-header bg-primary text-white">
-            <strong>Venta #{venta.id}</strong> — Fecha: {venta.fecha}
-          </div>
-          <div className="card-body">
-            <table className="table table-bordered table-sm">
-              <thead className="table-light">
-                <tr>
-                  <th>Artículo</th>
-                  <th>Precio Unitario</th>
-                  <th>Cantidad</th>
-                  <th>Subtotal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {venta.articulos.map((art, i) => (
-                  <tr key={i}>
-                    <td>{nombresArticulos[art.codArticulo] || art.codArticulo}</td>
-                    <td>${parseFloat(art.precioVentaArticulo).toFixed(2)}</td>
-                    <td>{art.cantidadVendidaArticulo}</td>
-                    <td>
-                      ${(art.precioVentaArticulo * art.cantidadVendidaArticulo).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-                <tr className="table-secondary">
-                  <td colSpan="3" className="text-end"><strong>Total</strong></td>
-                  <td><strong>${venta.total.toFixed(2)}</strong></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
+      <button
+        className="btn btn-outline-primary mb-3"
+        onClick={() => setOrdenDesc((prev) => !prev)}
+      >
+        {ordenDesc ? "Mostrar más antiguas primero" : "Mostrar más recientes primero"}
+      </button>
+      <table className="table table-bordered table-sm">
+        <thead className="table-light">
+          <tr>
+            <th>Artículo</th>
+            <th>Fecha</th>
+            <th>Cantidad</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ventasOrdenadas.map((venta) => (
+            <tr key={venta.id}>
+              <td>{nombresArticulos[venta.codArticulo] || venta.codArticulo}</td>
+              <td>{venta.fecha}</td>
+              <td>{venta.cantidad}</td>
+              <td>${parseFloat(venta.total).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

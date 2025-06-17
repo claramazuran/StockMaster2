@@ -32,8 +32,6 @@ import UpdateModeloInventario from "./components/ModeloInventario/UpdateModeloIn
 
 // Venta
 import AddVenta from "./components/Venta/AddVenta";
-import UpdateVenta from "./components/Venta/UpdateVenta";
-import DeleteVenta from "./components/Venta/DeleteVenta";
 import TablaVentas from "./components/Venta/TablaVentas";
 
 function App() {
@@ -75,8 +73,6 @@ function App() {
 
         {/* Ventas */}
         <Route path="/add-venta" element={<AddVenta />} />
-        <Route path="/update-venta" element={<UpdateVenta />} />
-        <Route path="/delete-venta" element={<DeleteVenta />} />
         <Route path="/tabla-venta" element={<TablaVentas />} />
       </Routes>
     </Router>
