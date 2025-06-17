@@ -75,7 +75,8 @@ export default function AddVenta() {
     console.log("Nombre del modelo:", modeloNombre);
     const puntoPedido = modelo.puntoPedido ?? 0;
     console.log("Punto de pedido:", puntoPedido);
-    const loteOptimo = modelo.cantiadAPedirOptima ?? 1;
+    const loteOptimo = modelo.cantidadAPedirOptima ?? 1;
+    console.log("cantidad a pedir óptima:", modelo.cantidadAPedirOptima);
     console.log("Lote óptimo:", loteOptimo);
     console.log("Stock final:", stockFinal);
 
