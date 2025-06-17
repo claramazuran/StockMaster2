@@ -243,6 +243,7 @@ export default function AddOrdenPorArticulo() {
           <div key={i} className="card mb-3 p-3">
             <div className="row g-2 align-items-end">
               <div className="col-md-4">
+                <text className="">Artículo</text>
                 <select
                   className="form-select"
                   value={item.codArticulo}
@@ -258,6 +259,12 @@ export default function AddOrdenPorArticulo() {
               </div>
 
               <div className="col-md-4">
+                {/* Mensaje de recomendación */}
+                {proveedorPredeterminado && (
+                  <div className="text-success mt-2">
+                    Proveedor recomendado: <strong>{proveedorPredeterminado.nombreProveedor}</strong>
+                  </div>
+                )}
                 {/* Select de proveedores relacionados */}
                 {item.codArticulo && (
                   <select
@@ -278,15 +285,10 @@ export default function AddOrdenPorArticulo() {
                     ))}
                   </select>
                 )}
-                {/* Mensaje de recomendación */}
-                {proveedorPredeterminado && (
-                  <div className="text-success mt-2">
-                    Proveedor recomendado: <strong>{proveedorPredeterminado.nombreProveedor}</strong>
-                  </div>
-                )}
               </div>
 
               <div className="col-md-4">
+                <text className="">Cantidad</text>
                 <input
                   type="number"
                   className="form-control"

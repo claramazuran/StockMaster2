@@ -163,7 +163,7 @@ export default function ResumenInventario() {
               <th>Lote óptimo</th>
               <th>Punto pedido</th>
               <th>Stock Seguridad</th>
-              <th>CTA</th>
+              <th>CGI</th>
               <th>Per. Revisión (días)</th>
               <th>Próximo Per. Revisión</th>
               <th>Proveedores</th>

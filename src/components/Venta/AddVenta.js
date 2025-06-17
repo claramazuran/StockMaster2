@@ -191,6 +191,7 @@ export default function AddVenta() {
         <div className="card mb-3 p-3">
           <div className="row g-2 align-items-end">
             <div className="col-md-4">
+              <text className="">Articulo</text>
               <select
                 className="form-select"
                 value={item.id}
@@ -205,6 +206,7 @@ export default function AddVenta() {
               </select>
             </div>
             <div className="col-md-4">
+              <text className="">Precio</text>
               <input
                 type="number"
                 className="form-control"
@@ -218,6 +220,7 @@ export default function AddVenta() {
               />
             </div>
             <div className="col-md-4">
+              <text className="">Cantidad</text>
               <input
                 type="number"
                 className="form-control"
